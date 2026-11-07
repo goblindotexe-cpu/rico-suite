@@ -1,0 +1,40 @@
+-- Generated embedded SPF chunk; upstream source and licence retained.
+local hostName, host = ...
+local embedded = host.NavigationEmbedded
+if embedded and embedded.enabled then
+    (function(...)
+local addonName = ...
+---@class SPFNamespace
+local ns = select(2, ...)
+local L = ns.L
+
+-- One sentence on what the latest release changed, printed once after an update. Each release refreshes it from
+-- its CHANGELOG entry.
+ns.WHATS_NEW = L["The guided waypoint says where it leads."]
+
+-- Once per new version, after an update: never on a first install, nor in a checkout, whose TOC still holds the
+-- packager's version keyword (matched by its "@", as the packager would rewrite the whole keyword here too).
+function ns.CheckWhatsNew()
+	local db = ns.db
+	local version = ns.EmbeddedMetadata( "Version")
+	if not version or version:find("^@") then
+		return
+	end
+	local seen = db.seenVersion
+	db.seenVersion = version
+	if seen and seen ~= version and db.whatsNew then
+		ns.Print(string.format(L["updated to %s. %s"], version, ns.WHATS_NEW))
+	end
+end
+
+ns.Init(function()
+	local frame = CreateFrame("Frame")
+	frame:RegisterEvent("PLAYER_LOGIN")
+	frame:SetScript("OnEvent", function(self)
+		self:UnregisterEvent("PLAYER_LOGIN")
+		ns.CheckWhatsNew()
+	end)
+end)
+
+    end)(hostName, embedded.namespace)
+end

@@ -1,0 +1,17 @@
+Data from Everloot (https://everloot.app), CC BY-SA 4.0.
+
+Copyright: the respective Everloot observation contributors.
+License: Creative Commons Attribution-ShareAlike 4.0 International.
+License text and terms: https://creativecommons.org/licenses/by-sa/4.0/legalcode
+Human-readable summary: https://creativecommons.org/licenses/by-sa/4.0/
+Source: https://everloot.app/api/rollups/drops?limit=500
+Source information: https://everloot.app/database/drops
+Source license statement: https://everloot.app/terms#licences
+
+Data as of 2026-11-05T23:50:13.259Z, retrieved 6 November 2026.
+Modified for RicoLoot: selected the five publicly published creature-to-item rows;
+excluded object rows; transformed field names to Lua/packed records; retained the
+eight-loot-window denominator, item occurrences, source date and attribution.
+Added Dutch explanations distinguishing observations from official drop chances.
+The selected observed data remain available under CC BY-SA 4.0. No endorsement by
+Everloot or its contributors is implied. No private uploads are included.

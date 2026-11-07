@@ -1,0 +1,16 @@
+RicoLoot UI and Core
+Copyright (C) 2026 Rico
+
+The RicoLoot UI and Core are free software: you can redistribute them and/or modify
+them under the terms of the GNU General Public License as published by the Free
+Software Foundation, either version 3 of the License, or (at your option) any later
+version. They are distributed without any warranty, including merchantability or
+fitness for a particular purpose. See Licenses/GPL-3.0.txt for the complete license.
+
+Bundled data retain their own attribution and applicable license terms. In
+particular, Classic reference data derive from GPL-licensed CMaNGOS/LootInsight/
+Lootified sources and retain their source notices. The optional Everloot
+observation supplement is CC BY-SA 4.0. See SOURCES_NL.txt and Licenses/.
+
+Shared Rico UI code retains its original MIT notice in Licenses/RicoShared-MIT.txt.
+Source transformations and the corresponding reusable source inputs are in Source/.

@@ -1,0 +1,42 @@
+{
+  "source": {
+    "key": "cmangos_classic_z2815",
+    "name": "CMaNGOS Classic-DB z2815 (Classic-referentie)",
+    "url": "https://github.com/cmangos/classic-db/blob/37eeeeb1d4c12f00ded1b542e758f71d6135d391/Full_DB/ClassicDB_1_12_1_z2815.sql.gz",
+    "license": "GPL-3.0; Blizzard copyright notice retained",
+    "revision": "37eeeeb1d4c12f00ded1b542e758f71d6135d391",
+    "date": "2023-10-09",
+    "dumpCompleted": "2023-10-09  6:14:27",
+    "gzipSHA256": "4f92db520868ab4e566726f68b5b2e380ae781209beaf22237b4f7f04600d0c0",
+    "sqlSHA256": "27ebb09a45a92820dbfee5290aad129b8e96e9b636add8bfe8cf1fb1aad1b68c",
+    "coreRevision": "c633638e8d08a9c2e408c93743720f5f65e420fb",
+    "note": "Classic DB-basiskans (1× lootrollen), basissnapshot 2023-10-09; niet bevestigd voor Forever. Percentages beschrijven uitsluitend aantoonbare DB-selectiepaden vóór servermodifiers, loot-slotlimieten en persoonlijke buitverdeling. Questvoorwaarden, andere voorwaarden, herhaalde/overlappende referenties en afhankelijke poolselectie blijven onbekend. De 437 latere repository-updates zijn niet toegepast.",
+    "subsequentUpdatesApplied": false,
+    "mapIdType": "worldMapIDs are old server terrain/instance map IDs; never use them as uiMapIDs"
+  },
+  "stats": {
+    "npcs": 4416,
+    "items": 17718,
+    "methods": {
+      "loot": {
+        "npcs": 4299,
+        "rows": 1312588,
+        "knownChances": 1274438
+      },
+      "skinning": {
+        "npcs": 924,
+        "rows": 3133,
+        "knownChances": 2814
+      },
+      "pickpocket": {
+        "npcs": 1563,
+        "rows": 6910,
+        "knownChances": 6903
+      }
+    },
+    "rejectedRows": {
+      "reference_loot_template": 4
+    },
+    "referenceIssues": {}
+  }
+}

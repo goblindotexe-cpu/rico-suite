@@ -1,0 +1,26 @@
+{
+  "compiled": "2026-11-06",
+  "mobs": 4441,
+  "items": 7883,
+  "zones": 82,
+  "classicSQL": {
+    "lootTables": 4298,
+    "lootEdges": 1312579,
+    "lootKnownChances": 1274430,
+    "pickpocketTables": 1563,
+    "pickpocketEdges": 6910,
+    "pickpocketKnownChances": 6903,
+    "skinningTables": 924,
+    "skinningEdges": 3133,
+    "skinningKnownChances": 2814
+  },
+  "classicAdditional": {
+    "tables": 507,
+    "edges": 5923
+  },
+  "foreverKnownBosses": 22,
+  "foreverKnownEdges": 72,
+  "fileBytes": 39912942,
+  "sha256": "7a3ee26fd04331565ab5ad549e45caadb83d2f866411e2b6f6b585424c3fe242",
+  "unknownZoneMobs": 846
+}

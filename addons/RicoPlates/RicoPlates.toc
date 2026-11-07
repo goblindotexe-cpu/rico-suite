@@ -1,0 +1,43 @@
+## Interface: 16001
+## Interface-Camelot: 16001
+## Title: |cff59e4bfRico|rPlates
+## Notes: Modern nameplates and player/target/pet unit frames with animated 3D portraits, liquid health and quest indicators.
+## Author: Rico
+## Version: 1.18.0
+## SavedVariables: RicoPlatesDB, RicoSuiteDB, RicoPlatesNavigationDB, RicoMiningDB
+## SavedVariablesPerCharacter: RicoPlatesNavigationCharDB
+## OptionalDeps: Questie, QuestieDB, RicoLoot, ShortestPathForever, Bagnon
+## IconTexture: Interface\AddOns\RicoPlates\Media\Icon
+
+NavigationEmbedded.xml
+Core.lua
+RicoUI.lua
+RicoSuite.lua
+RicoLauncher.lua
+Inventory.lua
+InventoryNativeSkin.lua
+MiningData.lua
+Mining.lua
+MiningSpawns.lua
+MiningRoutes.lua
+MiningMap.lua
+MiningUI.lua
+Auras.lua
+LootButton.lua
+Plates.lua
+Aggro.lua
+Features.lua
+Quest.lua
+QuestRoutes.lua
+QuestRouteUI.lua
+QuestieIcons.lua
+World.lua
+Portraits.lua
+NativeFrames.lua
+ClassResources.lua
+Layout.lua
+UnitFrames.lua
+PartyFrames.lua
+PartyWarnings.lua
+Dispels.lua
+Options.lua

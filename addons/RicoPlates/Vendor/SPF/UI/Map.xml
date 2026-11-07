@@ -1,0 +1,113 @@
+<Ui xmlns="http://www.blizzard.com/wow/ui/">
+	<!-- The addon's map pins are its own frames on the map canvas (UI/MapCanvas.lua), so no template here inherits the
+	     map's pin templates or names a mixin: the pools put the mixins on. Each keeps the art of the stock pin it stands
+	     in for (BaseHighlightableMapPoiPinTemplate in SharedMapPoiTemplates.xml): a texture and its added highlight. -->
+	<Frame name="RicoPlatesNavigationDockPinTemplate" virtual="true">
+		<Layers>
+			<Layer level="ARTWORK">
+				<Texture parentKey="Texture">
+					<Anchors>
+						<Anchor point="CENTER"/>
+					</Anchors>
+				</Texture>
+			</Layer>
+			<Layer level="HIGHLIGHT">
+				<Texture parentKey="HighlightTexture" alphaMode="ADD" alpha="0.4">
+					<Anchors>
+						<Anchor point="CENTER"/>
+					</Anchors>
+				</Texture>
+			</Layer>
+		</Layers>
+	</Frame>
+	<Frame name="RicoPlatesNavigationPortalPinTemplate" virtual="true">
+		<Layers>
+			<Layer level="ARTWORK">
+				<Texture parentKey="Texture">
+					<Anchors>
+						<Anchor point="CENTER"/>
+					</Anchors>
+				</Texture>
+			</Layer>
+			<Layer level="HIGHLIGHT">
+				<Texture parentKey="HighlightTexture" alphaMode="ADD" alpha="0.4">
+					<Anchors>
+						<Anchor point="CENTER"/>
+					</Anchors>
+				</Texture>
+			</Layer>
+		</Layers>
+	</Frame>
+	<!-- The stock flight point's art (FlightPointPinTemplate): the node, its highlight, and the marker it wears while
+	     super-tracked (SuperTrackableMapPinTemplate). -->
+	<Frame name="RicoPlatesNavigationFlightPinTemplate" virtual="true">
+		<Layers>
+			<Layer level="ARTWORK">
+				<Texture parentKey="Texture">
+					<Anchors>
+						<Anchor point="CENTER"/>
+					</Anchors>
+				</Texture>
+			</Layer>
+			<Layer level="ARTWORK" textureSubLevel="7">
+				<!-- art-ok: the stock super-track marker at the stock 20 by 20, the square pin it is drawn as -->
+				<Texture parentKey="SuperTrackMarker" atlas="Waypoint-MapPin-Tracked" hidden="true">
+					<Size x="20" y="20"/>
+					<Anchors>
+						<Anchor point="CENTER" relativePoint="BOTTOMRIGHT" x="-4" y="4"/>
+					</Anchors>
+				</Texture>
+			</Layer>
+			<Layer level="HIGHLIGHT">
+				<Texture parentKey="HighlightTexture" alphaMode="ADD" alpha="0.4">
+					<Anchors>
+						<Anchor point="CENTER"/>
+					</Anchors>
+				</Texture>
+			</Layer>
+		</Layers>
+	</Frame>
+	<!-- The client's own blob widget, as QuestBlobPinTemplate (QuestBlobDataProvider.xml) is one. -->
+	<QuestPOIFrame name="RicoPlatesNavigationAreaPinTemplate" virtual="true"/>
+	<Frame name="RicoPlatesNavigationGoalPinTemplate" virtual="true">
+		<Layers>
+			<!-- A numbered stop of a multi-stop journey is the map's own quest button (POIButtonTemplate in
+			     Blizzard_POIButton): its brown disc and gold ring, and the numbered quest button's yellow numeral from
+			     UI-QuestPoi-NumberIcons (QuestPOINumericTemplate). A shadow of the disc stays opaque under it, so a
+			     faded later stop still hides the POI beneath. A stop whose caller said what stands there wears that
+			     mark as a badge over the button's lower right; a lone one shows the mark alone, and a lone destination
+			     the waypoint pin. -->
+			<Layer level="BACKGROUND">
+				<!-- art-ok: the 32 by 32 quest button at its own size -->
+				<Texture parentKey="Disc" atlas="UI-QuestPoi-QuestNumber" hidden="true">
+					<Size x="32" y="32"/>
+					<Anchors>
+						<Anchor point="CENTER"/>
+					</Anchors>
+				</Texture>
+			</Layer>
+			<Layer level="ARTWORK">
+				<Texture parentKey="Texture" setAllPoints="true"/>
+				<!-- art-ok: the 32 by 32 quest button at its own size -->
+				<Texture parentKey="Button" atlas="UI-QuestPoi-QuestNumber" hidden="true">
+					<Size x="32" y="32"/>
+					<Anchors>
+						<Anchor point="CENTER"/>
+					</Anchors>
+				</Texture>
+			</Layer>
+			<Layer level="ARTWORK" textureSubLevel="1">
+				<!-- art-ok: one square cell of the numeral grid (StopPin.lua's SetTexCoord) in a square box -->
+				<Texture parentKey="Numeral" file="Interface\WorldMap\UI-QuestPoi-NumberIcons" hidden="true">
+					<Size x="32" y="32"/>
+					<Anchors>
+						<Anchor point="CENTER"/>
+					</Anchors>
+				</Texture>
+			</Layer>
+			<Layer level="OVERLAY" textureSubLevel="1">
+				<Texture parentKey="Icon" hidden="true"/>
+			</Layer>
+		</Layers>
+	</Frame>
+</Ui>

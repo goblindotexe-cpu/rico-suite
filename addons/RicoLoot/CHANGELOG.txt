@@ -1,0 +1,36 @@
+RicoLoot 1.1.0 — 6 november 2026
+
+- Nieuw direct mobvenster via RicoPlates' lootknop: alleen de gekozen NPC en diens
+  meegeleverde loot, scrollen, itemtooltips en sluiten. Geen zone- of zoekbediening.
+- Alle bronlagen en lootsoorten van de gekozen NPC staan samen in deze lijst,
+  met passieve bron-/methodekopjes. De Classic-filter uit de browser geldt hier niet.
+- Afzonderlijke bronnen, voorwaardelijke kansen en waarnemingsnoemers blijven intact.
+  Een onbekende kans is nog steeds een streepje; ontbrekende drops worden niet verzonnen.
+- Het venster houdt de bij de klik gekozen NPC vast. Een targetwissel, de hoofd-
+  browserselectie of een andere zone verandert die geopende lootlijst niet.
+- Bestaande /rl-zonekeuze, zoekvelden en selectie worden bij direct openen niet gewijzigd.
+- Venster en rijen worden pas bij gebruik aangemaakt; native iteminformatie wordt
+  uitsluitend voor zichtbare itemregels gevraagd. Asynchrone itemdata verversen ook
+  dit venster wanneer de uitgebreide browser dicht is.
+- Data.lua, DataObserved.lua, bronbestanden en licenties zijn ongewijzigd.
+- Eindcontrole: 8 directe-mobvenster-, 10 knop- en 7 echte-data-integratiegevallen
+  slagen. Ook 13 Core-, 9 browser- en 8 bestaande echte-databasegevallen slagen.
+  Alle vijf RicoLoot-Lua-modules parsen. Deze tests draaien buiten de WoW-client.
+
+RicoLoot 1.0.0 — 6 november 2026
+
+- Nieuwe zelfstandige Nederlandstalige addon voor WoW Forever, interface16001.
+- Vooraf gevulde mob- en lootcatalogus; geen zelf te verzamelen killdatabase.
+- Doorzoekbare zoneselectie, huidige-zoneknop en geselecteerd-targetknop.
+- Mobnaam-/NPC-ID-zoeker, itemfilter, paginering en sortering op kans/naam/kwaliteit.
+- Gewone loot, skinning en pickpocket gescheiden waar brongegevens beschikbaar zijn.
+- Classic DB-basiskansen, aanvullende Classic-relaties, oude Forever-bossreferenties
+  en actuele kleine Forever-waarnemingen blijven afzonderlijke bronlagen.
+- Onbekende percentages blijven onbekend; voorwaarden en steekproefgrootte in tooltip.
+- Donker venster in de Rico-stijl, saved dragpositie en automatische fit op kleine schermen.
+- Lazy frames en lootdecodering, beperkte caches, native itemdata alleen voor zichtbare rijen.
+- Bronverwijzingen, licenties en corresponderende bronconversie meegeleverd.
+- Eindcontrole: 29 addon-/UI-/datagevallen en 9 bronberekeningen slagen;
+  alle vier productie-Lua-modules parsen. Geen live WoW-uitvoering verricht.
+
+Deze uitgave is geen complete of officieel bevestigde Forever-lootdatabase.

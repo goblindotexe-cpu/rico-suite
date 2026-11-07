@@ -1,0 +1,192 @@
+RicoPlates 1.5.0 — 2026-11-06
+
+- Kleine kistknop rechts van de HP-balk op NPC-nameplates. De optionele questtekst
+  staat erachter; de bestaande groene questmarker behoudt zijn plaats.
+- Ook op het NPC-target-HUD, rechts buiten het portret met ruimte voor de questmarker.
+  De HP-/portretindeling, levelbox, classpunten en overige unitklikken blijven behouden.
+- Klik opent RicoLoot 1.1.0 met alleen de vooraf ingevulde loot van die ene NPC,
+  in één scrollbare lijst. Geen zones, zoekvelden, filters of bronkeuze in dit venster.
+- NPC-identiteit wordt bij iedere klik opnieuw uit de actuele, openbare unit-GUID
+  gelezen. Geen oude mob-ID na platehergebruik en geen terugval op een ander target.
+- Spelers en spelerbestuurde pets krijgen geen lootknop. Zonder RicoLoot blijft
+  de knop verborgen; een onbekende mob krijgt een expliciete lege datamelding.
+- RicoLoot 1.1.0 en de ongewijzigde RicoFishing 1.0.0 zijn volledig meegeleverd.
+  Bestaande SavedVariables blijven behouden; standaardwaarden toepassen is niet nodig.
+- De lootbrondata zijn ongewijzigd. Classic-bronnen blijven als referentie herkenbaar;
+  dit maakt de database niet compleet of officieel bevestigd voor Forever.
+- Eindcontrole: 25 nieuwe knop-/mobvenster-/integratiescenario's slagen, inclusief
+  pointerklikken met de echte gebundelde data. Bestaande RP/RF-regressie (111 plus
+  wereldhulp), aparte koude HUD-start (24) en RicoLoot-regressie (30) slagen ook.
+  Alle 21 productie-Lua-modules uit de drie TOC's parsen. Geen live WoW-uitvoering.
+
+RicoPlates 1.4.0 — 2026-11-06
+
+- Eigen speler- en pet-HUD: portret links, HP rechtsboven direct ertegenaan en
+  de bestaande hoofdresource compact eronder. Target-HUD volledig gespiegeld.
+- Levelvak op de buitenste bovenhoek van het portret. Native moeilijkheidskleuren
+  voor aanvalbare doelen; de standaard skull bij publiek onbekend/te hoog level.
+- Levelweergave gebruikt effective level en vernieuwt ook bij eigen level-up.
+  Geen vergelijkingen of kleurafleiding uit afgeschermde level-/difficultywaarden.
+- Ontgrendelen sluit de opties en geeft sleepkaders een expliciete voorgrondlaag.
+  Een afzonderlijke Vastzetten-balk en rechtsklik op een kader maken vastzetten zichtbaar.
+- Portret, bars, level, iconen, aura's en classpunten bewegen via één bewaard anker.
+  Gecontroleerd met pointer-hit-tests, afwijkende schaal en combat tijdens slepen.
+- Questie's bruine nameplate-/targetbadges via de bronopties uitgeschakeld en
+  met de openbare opruimmethoden verwijderd. De groene eigen marker blijft zichtbaar.
+  Oude individuele frame-/textureherkenning vervalt; profielvoorkeuren worden hersteld.
+- RicoFishing 1.0.0 als afzonderlijke addon meegeleverd: 29 vooraf gevulde items,
+  bronstatus per item/locatie, tasdoelen, ontvangen-vislootstatistiek en kaartpunten.
+- Visdata: 7 directe Forever-bèta-waarnemingen en 25 referenties met 3 overlappen.
+  Geen claim van alle loot/trinkets of volledige releaseverificatie. De 8.324
+  aanvullende broncoördinaten staan standaard uit omdat ze niet onafhankelijk zijn bevestigd.
+- Kaart/minimap via bestaande Questie-/HereBeDragons-kaartbibliotheek; native
+  waypoint alleen na een expliciete locatieklik. Geen gegokte zone-only-pin.
+- Bestaande RicoPlates-voorkeuren blijven behouden; geen reset nodig.
+- Deze uitgave is hier niet in een echte WoW-client uitgevoerd.
+
+- Eindcontrole: 111 gezamenlijke scenario's plus wereldhulp slagen. De aparte
+  HUD-run slaagt met 24 scenario's inclusief eerste startup in combat. Alle
+  15 productie-Lua-modules parsen. Deze controles zijn buiten de WoW-client uitgevoerd.
+
+RicoPlates 1.3.1 — 2026-11-06
+
+- Questie's aparte HUD-targetbadge herkend en links van het levelvak geplaatst.
+  De eerdere koppeling herkende alleen overheadbadges met een lastIcon-kenmerk.
+- Eigen en Questie-icoon niet dubbel op dezelfde plate; theme-iconen ondersteund
+  wanneer Questie zelf de texture bevestigt. Geen willekeurige tasiconen verplaatst.
+- Targetwissels/redraws volgen hetzelfde anker. Oorspronkelijke parent blijft;
+  overgenomen ankers en parent-alpha-instelling worden bij loskoppelen hersteld.
+- Nieuwe compacte classresourcerij onder het targetportret; targetgebonden punten
+  via GetComboPoints(player,target), echt maximum via UnitPowerMax(player,type).
+- Rogue- en cat-druid-combopunten volgen targetwissels en COMBO_TARGET_CHANGED.
+  Geen onjuiste player-power-bron of extra UnitHasPowerType-veto voor combo-punten.
+- Voorwaardelijke ondersteuning voor andere echte classresources via class/spec
+  en positieve publieke capaciteit. Geen Retail-mechanieken of aantallen verzonnen.
+- Native StatusBar-segmenten ontvangen actuele waarden zonder secret-berekeningen.
+  Runen gebruiken de native gereedstatus; expliciete secundaire pools een doorlopende balk.
+- Aan/uit onder Unitframes, standaard aan en onafhankelijk van de primaire powerbalk.
+- Terugval naar eigen spelerframe als het target-HUD ontbreekt; doelgebonden punten
+  verdwijnen zonder geselecteerd doel. Preview neemt de live weergave niet over.
+- Alleen de exact passende native classbalk wordt omkeerbaar overgenomen; beschermd
+  herstel en configuratie wachten bij combat. Geen parent- of eventwijzigingen daaraan.
+- Bij terugval naar het speler-HUD wordt ook de bekende native target-combocirkel
+  onderdrukt. Herstel volgt zijn laatste publieke fade-alpha, zodat de oorspronkelijke
+  cirkel na uitschakelen niet onbedoeld onzichtbaar blijft.
+- Bestaande voorkeuren blijven behouden; geen reset nodig.
+- 39 core-, 13 aura-, 16 Questie-, 18 HUD- en 15 classresource-scenario's slagen:
+  101 in de gezamenlijke run, plus de wereldhulpsuite. Alle 11 Lua-modules parsen.
+  De aparte HUD-run slaagt met 19 scenario's, inclusief eerste startup in combat.
+- Deze update is hier niet in een echte WoW-client uitgevoerd.
+
+RicoPlates 1.3.0 — 2026-11-05
+
+- Vaste speler-, target- en petframes in de bestaande zwartmetalen RicoPlatesstijl.
+- Echte native PlayerModel-portretten, portretcamera/zoom en idleanimatie.
+- 2D-fallback bij laden of afgeschermde identiteit; hoogstens drie laadretries.
+- Native secure unitbuttons met selectie, spreuk-targeting en unitmenu; unitwatch
+  regelt bestaan/verdwijnen zonder addonmutaties aan de secure wrapper in combat.
+- HUD-target toont elke geselecteerde unit, onafhankelijk van overheadfilters.
+- Gedeelde HP-, resource-, kleur-, bubble- en aurarendering met afzonderlijke HUDmaten.
+- Nulcapaciteitsfilter behouden; NPC-mana in het HUD staat los van de overheadoptie.
+- Native weergave wordt omkeerbaar onderdrukt; aanvullende class-/ToT-controls blijven.
+- Nieuw Unitframes-tabblad met voorbeeld, toggles, afmetingen, schaal en portretzoom.
+- Afzonderlijk verplaatsbare frames; /rp unlock, /rp lock en positieherstel.
+- Oude targetaura's en portretten worden bij unitwissels opgeschoond.
+- Instellingen blijven behouden; geen reset nodig.
+- 39 core-, 13 aura-, 7 Questie- en 18 HUD/portret-scenario's plus de wereldhulpsuite
+  slagen. De aparte HUD-run telt 19 scenario's inclusief eerste startup in combat.
+- Alle 10 Lua-modules parsen. Een door combat onderbroken drag wordt veilig afgerond.
+- Deze update is hier niet in een echte WoW-client uitgevoerd.
+
+RicoPlates 1.2.3 — 2026-11-05
+
+- Resourcecontrole hersteld: een aanwezig resourcetype bewijst geen positieve
+  capaciteit. De eerdere controle kon bij verborgen maxima nog 0/0 tonen.
+- Openbaar nulmaximum of huidige + ontbrekende resource beide openbaar nul:
+  resourceframe volledig verborgen, cast- en buffruimte direct aangesloten.
+- Verborgen maxima rechtstreeks naar native alpha, na een publieke ondersteuningstest:
+  geen zichtbare 0/0-balk, achtergrond of tekst; echte lege 0/100-resources blijven.
+  Volledig verborgen nulcapaciteit behoudt alleen zijn vaste layoutruimte.
+- Fallback bewaart openbaar bewezen positieve capaciteit; geen verborgen
+  vergelijkingen, uitlezen van tekst of rekenen met beschermde waarden.
+- Oude vriendelijke-speleropties automatisch verwijderd. Gewone vrienden
+  verschijnen alleen bij selectie, verdwijnen bij deselectie of doelwissel.
+- Party en raid houden hun eigen altijd-tonen-opties. Uitgeschakelde groepen
+  verschijnen wel bij selectie, met behoud van hun blauwe/oranje groepskleur.
+- Standaard hover-/selectiestrook volgt de verborgen native nameplate;
+  oorspronkelijke parent-alpha-instelling wordt bij loskoppelen hersteld.
+- Versie in laadbericht en resourcefilter in /rp status. Geen reset nodig.
+- 39 core/plate/quest-, 13 aura- en 7 Questie-iconchecks plus de wereldhulpsuite
+  slagen. Alle 7 Lua-modules parsen; native ondersteuning krijgt een runtimeprobe.
+- Deze update is hier niet in een echte WoW-client uitgevoerd.
+
+RicoPlates 1.2.2 — 2026-11-05
+
+- Geselecteerde vriendelijke spelers hebben een eigen zichtbaarheidsoptie,
+  standaard aan, los van de algemene friendly-spelerschakelaar.
+- Targetwissels herbeoordelen ook verborgen nameplates; ongewijzigde plates en
+  auracontainers worden niet opnieuw gekoppeld.
+- Party standaard altijd zichtbaar, met eigen uit-optie; raid blijft apart en oranje.
+- Moderne friendly-player- en HP/naamfilters met fallback voor oudere CVars.
+- NPC-zichtbaarheid blijft apart instelbaar.
+- Teruglezing bevestigt toegepaste CVar-wijzigingen; herstel bewaart latere wijzigingen.
+- Bestaande instellingen blijven behouden; de nieuwe selectie-optie wordt toegevoegd.
+- 33 core/plate/quest-, 13 aura- en 7 Questie-iconchecks plus de wereldhulpsuite slagen.
+  Alle 7 Lua-modules parsen; deze update is hier niet ingame uitgevoerd.
+
+RicoPlates 1.2.1 — 2026-11-05
+
+- Questicoon links van het levelvak; zonder levelvak links van de HP-balk.
+- Herkende Questie-iconen volgen het levelanker, met herstel van oorspronkelijke
+  ankers en onderdrukking van een dubbel RicoPlates-icoon.
+- Resource-aanwezigheid via UnitHasPowerType gecontroleerd: geen 0/0-balk bij
+  resource-loze mobs met afgeschermde maximumwaarden.
+  Deze controle bleek onvolledig bij een positief type-vlaggetje met nulcapaciteit;
+  de aanvullende oplossing staat in 1.2.3.
+- Echte lege resources (bijvoorbeeld 0/100 rage) blijven zichtbaar.
+- Onbekende aanwezigheid wordt alleen bevestigd door een openbaar positief maximum.
+- Casts en buffs sluiten aan op de resterende zichtbare balken.
+- Bestaande instellingen blijven behouden.
+- Alle 7 Lua-modules parsen; 26 core/plate/quest-, 13 aura- en 7 Questie-iconchecks
+  plus de wereldhulpsuite slagen. Deze update is hier niet ingame uitgevoerd.
+
+RicoPlates 1.2.0 — 2026-11-05
+
+- Wit/grijze HP-balk en bubbels bij een native tap-denied-status voor een mob.
+- Terugkeer naar de reactiekleur als de claim weer geldig wordt.
+- Eigen/groepsclaims, spelers en spelerbestuurde pets worden niet ten onrechte grijs.
+- Afzonderlijke optie voor triviale/te lage mobs; standaard uit.
+- Buffs in een tweede onafhankelijke rij onder de HP/resource/castbalken.
+- Debuffs blijven boven de naam; afzonderlijke native HELPFUL/HARMFUL-filters.
+- Aparte aan/uit-, grootte-, maximum- en eigen/pet-instellingen per aurarij.
+- Buffanker volgt de zichtbare cast/resourcebalk zonder overlap of constante rebuilds.
+- Bijgewerkte live voorbeelden, handleiding en diagnose.
+- 21 core/plate/quest- en 13 aurascenario's plus de wereldhulpsuite slagen.
+
+RicoPlates 1.1.0 — 2026-11-05
+
+- Bubbels standaard 1,8x groter en iets beter zichtbaar; nieuwe grootte-instelling.
+- Zwartmetalen rand met bevel; geselecteerde doelen krijgen een subtiele staalglans.
+- Level in een compact bijpassend vakje dicht naast de HP-balk.
+- Questlabel/voortgang standaard verborgen, questicoon blijft beschikbaar.
+- Nieuwe compacte debuffrij boven de naam, standaard maximaal 6 iconen van 18 px.
+- Eigen debuffs/pet-filter, instelbare icoongrootte en maximum.
+- Native Forever-auracontainer voor ondersteunde gevechtsweergave.
+- Nieuw tabblad Debuffs en bijgewerkte voorbeelden in het instellingenvenster.
+- Bestaande instellingen blijven behouden; nieuwe opties worden automatisch toegevoegd.
+
+RicoPlates 1.0.0 — 2026-11-05
+
+- Eerste zelfstandige uitgave voor WoW Forever (interface 16001).
+- Moderne compacte HP-balken met rode/gele vijanden, blauwe party en oranje raid.
+- Optionele eigen factie en vriendelijke NPC's, aparte party-/raid-schakelaars.
+- Factie-iconen boven klasse-iconen bij vijandige spelers.
+- Level, HP-tekst, hoofdresource, targetrand, raidmarkeringen, casts en channels.
+- Apart instelbare procent- of huidig/max-tekst voor HP en resources.
+- Native geanimeerde bubbels, op kleur en afgeknipt op de actuele HP-vulling.
+- Native questdoelen plus optionele openbare Questie-API; KILL/LOOT/QUEST-markers.
+- Native objectoutlines en grote groene pijl bij één nabij questobject tegelijk.
+- Nederlandse instellingen met vijf live voorbeelden en uitgestelde sliderupdates.
+- Secret-value-behandeling, frame-poolherstel, instellingenbackup en /rp restore.
+- 17 logicascenario's en afzonderlijke world-modulecontroles geslaagd in mocks.
+- Nog geen echte ingame-validatie; zie LEESMIJ_NL.txt voor de concrete grenzen.

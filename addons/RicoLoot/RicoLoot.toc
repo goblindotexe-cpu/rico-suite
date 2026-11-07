@@ -1,0 +1,21 @@
+## Interface: 16001
+## Interface-Camelot: 16001
+## Title: |cff59e4bfRico|rLoot
+## Notes: Prefilled creature loot browser and complete NPC loot lists from RicoPlates.
+## Author: Rico
+## Version: 1.5.1
+## SavedVariables: RicoLootDB, RicoSuiteDB, RicoLootSyncRequest
+## OptionalDeps: RicoLootEverloot
+
+Data.lua
+DataObserved.lua
+DataSyncStatus.lua
+Core.lua
+RicoUI.lua
+RicoSuite.lua
+RicoLauncher.lua
+Observations.lua
+Wishlist.lua
+Database.lua
+UI.lua
+MobLoot.lua

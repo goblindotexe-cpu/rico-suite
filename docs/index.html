@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0a110f">
+  <meta name="description" content="Rico Suite brings custom nameplates, a loot browser, fishing and mining tools, and a unified inventory to World of Warcraft: Forever.">
+  <title>Rico Suite for WoW Forever</title>
+  <link rel="icon" href="rico.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="shell nav">
+      <a class="brand" href="./"><img src="rico.svg" alt="" width="34" height="34"> Rico Suite</a>
+      <nav aria-label="Main navigation">
+        <a href="#addons">Addons</a>
+        <a href="#install">Install</a>
+        <a href="https://github.com/goblindotexe-cpu/rico-suite">GitHub <span aria-hidden="true">↗</span></a>
+      </nav>
+    </div>
+  </header>
+  <main>
+    <section class="hero shell" aria-labelledby="hero-title">
+      <div class="hero-copy">
+        <p class="eyebrow"><span></span> World of Warcraft · Forever</p>
+        <h1 id="hero-title">Rico <em>Suite.</em></h1>
+        <p class="intro">Know what is casting at you, find the loot you came for, and keep your gathering routes, fishing guide and inventory close at hand.</p>
+        <div class="actions">
+          <a class="button primary" href="https://github.com/goblindotexe-cpu/rico-suite/releases/latest/download/RicoSuite-forever.zip">Download for Forever <span aria-hidden="true">↓</span></a>
+          <a class="button secondary" href="#install">Install with WowUp <span aria-hidden="true">↗</span></a>
+        </div>
+      </div>
+      <figure class="showcase">
+        <div class="demo-window" aria-hidden="true">
+          <div class="demo-head"><span>RICO PLATES</span><span class="demo-mark"></span></div>
+          <div class="demo-scene">
+            <div class="cast-eye"><svg viewBox="0 0 48 32" width="36" height="24"><path d="M3 16Q24-6 45 16Q24 38 3 16Z" fill="#e9a094" stroke="#f14553" stroke-width="3"/><circle cx="24" cy="16" r="8" fill="#8c1d31"/><path d="M24 11v10" stroke="#21090e" stroke-width="3"/><path d="m12 22-2 8m21-7 2 5" stroke="#e13a49" stroke-width="3" stroke-linecap="round"/></svg><span class="bolt">ϟ</span></div>
+            <div class="unit-name">Moonrage Whitescalp</div>
+            <div class="unit-row"><span class="unit-level">10</span><div class="health"><span>185 / 208</span></div></div>
+            <div class="cast-bar">Shadow Bolt</div>
+          </div>
+          <div class="demo-footer"><span>Cast on you</span><span>Interrupt ready</span></div>
+        </div>
+        <figcaption>Illustrated preview of a nameplate and incoming-cast warning.</figcaption>
+      </figure>
+    </section>
+    <section id="addons" class="section shell" aria-labelledby="addons-title">
+      <p class="eyebrow">The suite</p>
+      <h2 id="addons-title">Three addons, one minimap menu.</h2>
+      <div class="addon-grid">
+        <article class="addon">
+          <div class="addon-top"><span class="index">01</span><code>/rp</code></div>
+          <h3>RicoPlates</h3>
+          <p>Animated health bars, player and target portraits, party alerts and a cast warning that tracks spells aimed at you.</p>
+          <ul><li>Combined inventory <code>/ri</code></li><li>Mining pins, routes and skill help</li><li>Quest markers and map guidance</li></ul>
+        </article>
+        <article class="addon">
+          <div class="addon-top"><span class="index">02</span><code>/rl</code></div>
+          <h3>RicoLoot</h3>
+          <p>Search by zone, creature or item. Compare the available reference and observation data, and record drops as you play.</p>
+          <ul><li>Searchable loot tables</li><li>Local loot observations</li><li>Item wishlist and farming goals</li></ul>
+        </article>
+        <article class="addon">
+          <div class="addon-top"><span class="index">03</span><code>/rf</code></div>
+          <h3>RicoFishing</h3>
+          <p>Look up fish and fishing areas, set a goal, and keep track of your catches without leaving the game.</p>
+          <ul><li>Fishing guide and map tools</li><li>Catch and goal tracking</li><li>Shared Rico interface</li></ul>
+        </article>
+      </div>
+    </section>
+    <section id="install" class="section install" aria-labelledby="install-title">
+      <div class="shell install-grid">
+        <div><p class="eyebrow">Setup</p><h2 id="install-title">Install once.<br>Keep it up to date.</h2><p class="muted">WowUp can install and update the suite outside the game. Releases target the Forever client.</p></div>
+        <div>
+          <ol class="steps">
+            <li><strong>Open WowUp</strong><p>Choose World of Warcraft: Forever as your game client.</p></li>
+            <li><strong>Install from URL</strong><p>Paste the Rico Suite repository link in <b>Get Addons → Install from URL</b>.</p><a class="repo-url" href="https://github.com/goblindotexe-cpu/rico-suite">github.com/goblindotexe-cpu/rico-suite</a></li>
+            <li><strong>Enable Auto Update</strong><p>Right-click Rico Suite in <b>My Addons</b> and enable <b>Auto Update</b>. Close WoW before applying an update.</p></li>
+          </ol>
+          <p class="manual">To install manually, close WoW and extract the three addon folders into <code>_forever_/Interface/AddOns</code>.</p>
+        </div>
+      </div>
+    </section>
+  </main>
+  <footer class="shell footer"><span>Rico Suite · Community addons for WoW Forever</span><a href="https://github.com/goblindotexe-cpu/rico-suite/releases">Release notes ↗</a></footer>
+</body>
+</html>

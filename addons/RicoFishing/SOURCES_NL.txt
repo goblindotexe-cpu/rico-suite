@@ -1,0 +1,137 @@
+RicoFishing — bronnen en grenzen van de vooraf ingevulde catalogus
+Samengesteld: 6 november 2026
+
+De catalogus bevat 29 verschillende items. Je hoeft zelf niets te vangen om
+deze lijst te vullen. De bewijsstatus staat los van je eigen sessieteller.
+
+Er zijn twee bronlagen, met drie overlappende items:
+
+1. Zeven items met directe waarnemingen in de Forever-beta.
+2. Vijfentwintig vissen/ingrediënten uit de GatherLite-referentie, afkomstig
+   van Wowhead Forever-itempagina's. Deze laag bevat 8.324 gemelde
+   vangstcoördinaten over 43 UI-kaarten.
+
+Dit is geen volledige loottabel van de releaseclient. Geen van deze bronnen
+bewijst dat elke mogelijke vis, trinket, kist, bijzonder voorwerp of locatie is
+opgenomen. Een ontbrekend item betekent dus niet dat je het niet kunt vangen.
+We hebben geen onbevestigde Classic-tabel omgedoopt tot bevestigde Forever-data.
+
+DIRECTE WAARNEMINGEN
+
+AzerDex / ForeverDB, publicatie 13, 21 oktober 2026:
+
+  6289  Raw Longjaw Mud Snapper
+  6291  Raw Brilliant Smallfish
+  6297  Old Skull
+  6299  Sickly Looking Fish
+  118   Minor Healing Potion
+  21071 Raw Sagefish
+
+Deze bron verzamelt werkelijk geregistreerde Forever-lootvensters. De gegevens
+zijn steekproeven, geen officiële dropkansen. Open water en scholen worden
+apart bijgehouden. De publicatie is ouder dan de release van 4 november.
+
+Tirisfal Glades, uiMapID 1420: het fishinggebied rond Brightwater Lake heeft een
+geaggregeerd waarnemingsvak rond 65,48. Dat vak is ongeveer 1% van de kaart groot;
+het is geen exact spawnpunt en geen afzonderlijk bewezen vangstpunt per item.
+Silverpine Forest, uiMapID 1421: voor deze waarnemingen is alleen de zone bekend.
+De Sagefish School heeft geen voldoende nauwkeurige openbare positie. De
+databasecode -1569625634 is een synthetische broncode, geen echt gameObject-ID.
+
+De Minor Healing Potion is alleen gekoppeld aan fishing in een historische,
+onbekende zone. Tirisfal op zijn itempagina betreft monsterloot; we hebben die
+zone daarom niet aan de fishingvangst toegekend.
+
+Bronnen:
+https://azerdex.com/about/data
+https://azerdex.com/fishing/1420
+https://azerdex.com/fishing/1421
+https://azerdex.com/object/-1569625634
+https://azerdex.com/item/118
+https://azerdex.com/item/6289
+https://azerdex.com/item/6291
+https://azerdex.com/item/6297
+https://azerdex.com/item/6299
+https://azerdex.com/item/21071
+https://github.com/Imemoth/wow-foreverdb
+
+Whimsyfin, item 251524:
+
+Een speler beschrijft in een eigen betaverslag van 22 oktober vijf vangsten uit
+een pool bij Stonewatch Falls, Redridge Mountains, uiMapID 1433. De gekoppelde
+Forever-itempagina bevestigt het item-ID. Alleen zone en subzone zijn bekend;
+we verzinnen geen exacte coördinaten of minimale skill. De beschreven afwezigheid
+van vangsten in open water bewijst niet dat dat overal onmogelijk is.
+
+https://annatheannoying.wordpress.com/2026/10/22/fishing-review-world-of-warcraft-forever-beta/
+https://www.wowhead.com/forever/item=251524/whimsyfin
+https://azerdex.com/zones
+
+Van deze bronnen zijn afzonderlijke feiten met bronvermelding opgenomen.
+Artikeltekst, afbeeldingen en addoncode zijn niet gekopieerd. De naam
+"waargenomen" betekent hier een gedocumenteerde Forever-betawaarneming,
+niet een nieuwe controle in de huidige release.
+
+GATHERLITE / WOWHEAD FOREVER-REFERENTIES
+
+Project: Wuild/GatherLite
+Vaste commit: f84380884a4507d7c1e7bc541d717cb458e388e1
+Eerste visimport volgens de auteur: 20 september 2026
+Opgehaald voor RicoFishing: 6 november 2026
+Licentie: MIT, Copyright (c) 2019 Wuild
+De volledige meegestuurde licentietekst staat in LICENSE_GatherLite.txt.
+
+De importer accepteert alleen Forever-itempagina's, hun fished-in-lijst en
+kaarten die expliciet Fishing Locations heten. Verkopersposities worden niet
+als vangstpunten gebruikt. De bron-URL en HTML-hash blijven per item bewaard.
+Een Forever-URL bewijst volgens de auteur echter niet dat iedere locatie
+opnieuw in Forever is gecontroleerd. Daarom blijven al deze punten
+"referentie/gemeld", ook wanneer het item zelf elders direct is waargenomen.
+
+Bekende locaties garanderen geen huidige spawn, school of vangst. Voorwaarden
+zoals seizoen, tijdstip en benodigde skill worden niet uit de punten afgeleid.
+Vijf vissen hebben alleen zone-informatie en geen precieze referentiepunten.
+De lijst is beperkt tot 25 vissen/ingrediënten; hij omvat niet alle bijzondere
+fishingloot. Er is in de directe bronnen geen trinketvangst bevestigd.
+
+De niet opgeloste brongebieden blijven apart bewaard:
+
+  areaID 2597 — Alterac Valley
+  areaID 3358 — Arathi Basin
+
+Dit zijn areaIDs, geen geverifieerde uiMapIDs. Ze krijgen geen kaartpin.
+
+Bronbestand:
+https://raw.githubusercontent.com/Wuild/GatherLite/f84380884a4507d7c1e7bc541d717cb458e388e1/tools/wowhead/fish.json
+
+Documentatie:
+https://github.com/Wuild/GatherLite/blob/f84380884a4507d7c1e7bc541d717cb458e388e1/tools/wowhead/README.md#fish-catch-reference
+
+Licentie:
+https://github.com/Wuild/GatherLite/blob/f84380884a4507d7c1e7bc541d717cb458e388e1/LICENSE
+
+De originele GatherLite-data vallen onder MIT. Zijn recente volledige addon
+bevat daarnaast GPL-navigatiecode; die code, terreinbestanden en afbeeldingen
+zijn niet in RicoFishing opgenomen.
+
+GEEN BRON VOOR BEVESTIGDE FOREVER-VANGSTEN
+
+SenseOS maakt duidelijk dat zijn itemtooltips uit Forever komen, maar dat
+acquisitiegegevens vanuit Classic zijn overgezet. R.E.E.L. vermeldt bij zijn
+huidige zonecijfers expliciet een Classic-basis. Oude Allakhazam-reacties onder
+een Forever-itempagina zijn evenmin nieuwe Forever-waarnemingen. Deze gegevens
+zijn niet als directe Forever-vangsten in de catalogus gezet.
+
+Er is ook geen gesloten code of complete gids gekopieerd uit Forever Fishing,
+vanThos Fishing Journal of R.E.E.L.
+
+KAARTPUNTEN EN TELLERS
+
+Een bron met alleen een zone krijgt geen verzonnen punt in het midden van de
+kaart. Een expliciete waypointklik kan de ene bestaande Blizzard-waypoint
+vervangen. Bibliotheekpins gebruiken eigen RicoFishing-frames, niet Questie's
+questframes. Referentiepunten houden hun eigen bronstatus.
+
+Je eigen fishingloot en voorraaddoel vullen niet automatisch ontbrekende
+globale brongegevens in. Voorraad is niet hetzelfde als zelf gevangen:
+gekochte of geruilde items kunnen wel in je tassen liggen.

@@ -1,0 +1,170 @@
+RICOLOOT — BRONNEN, DEKKING EN BETEKENIS VAN PERCENTAGES
+Samengesteld: 6 november 2026
+
+Deze database staat al in de addon. Je hoeft geen eigen kills of loot te
+verzamelen om zones, mobs en hun beschikbare tabellen te bekijken.
+
+De brede laag is een CLASSIC-REFERENTIE. Dat betekent dat de tabel helpt om
+vooraf te zoeken, maar niet bewijst dat dezelfde mob, drop of kans in Forever
+ongewijzigd bestaat. Forever-waarnemingen en bekende Forever-bètadrops staan
+als afzonderlijke bronnen naast die referentie. Geen enkele tabel claimt
+volledigheid; ontbrekende data worden niet als nul procent weergegeven.
+
+1. WAT IS VOORAF INGELEZEN?
+
+- 4.441 NPC's met een of meer tabellen.
+- 7.883 verschillende items die daadwerkelijk in die tabellen voorkomen.
+- 82 zone-/instantiecategorieën, inclusief een categorie voor onbekende locaties.
+- Classic normale buit: 1.312.579 NPC-itemrecords; 1.274.430 met een conservatief
+  berekenbare DB-basiskans.
+- Classic villen: 3.133 NPC-itemrecords; 2.814 met zo'n DB-basiskans.
+- Classic zakkenrollen: 6.910 NPC-itemrecords; 6.903 met zo'n DB-basiskans.
+- 5.923 aanvullende Classic-buitrelaties uit een andere bron, apart en zonder
+  een daaraan toegeschreven percentage.
+- 72 bekende Forever-bètadrops voor 22 nieuwe dungeon-NPC's, zonder een
+  ongefundeerd Forever-percentage.
+- De optionele Everloot-updater levert actuele openbare waarnemingen afzonderlijk.
+
+Dit zijn bron-/methodegebonden records. Dezelfde item-NPC-combinatie kan in
+meer dan één onafhankelijke bron voorkomen. De aantallen zijn dus niet het
+aantal unieke items en niet het aantal bewezen Forever-drops.
+
+Grijze spullen, gewone materialen, voedsel, kleding, recepten, zeldzame drops
+en questitems worden meegenomen wanneer de gekozen bron ze vermeldt.
+Normale buit, villen en zakkenrollen worden niet op één hoop gegooid.
+
+2. PRIMAIRE CLASSIC-TABELLEN: CMANGOS CLASSIC-DB
+
+Bron:
+https://github.com/cmangos/classic-db/blob/37eeeeb1d4c12f00ded1b542e758f71d6135d391/Full_DB/ClassicDB_1_12_1_z2815.sql.gz
+
+Licentie: GNU GPL versie 3, met behoud van de aanvullende copyrightvermelding.
+Dump: ClassicDB_1_12_1_z2815, voltooid 9 oktober 2023, 06:14:27.
+Repository-revisie: 37eeeeb1d4c12f00ded1b542e758f71d6135d391.
+SHA-256 van de gzip:
+4f92db520868ab4e566726f68b5b2e380ae781209beaf22237b4f7f04600d0c0
+
+De 437 latere repository-updates zijn NIET op deze dump toegepast. De addon
+noemt deze laag daarom 'Classic DB 2023' en niet de actuele Forever-database.
+
+De import koppelt een NPC aan de echte LootId, SkinningLootId en
+PickpocketLootId uit creature_template. Een NPC-ID wordt niet zonder controle
+als loot-template-ID gebruikt. Gedeelde referentietabellen worden opgelost.
+De expliciete ontwikkel-NPC 'Waypoint (Only GM can see it)' is uitgesloten.
+Alleen het ontbreken van een statische spawn is geen reden om een mogelijk
+gescripte creature uit de catalogus te verwijderen.
+
+Betekenis van een percentage:
+'Classic DB-basiskans (1× lootrollen)' is de berekenbare selectie uit die
+Classic-database, vóór servermodifiers, loot-slotlimieten en persoonlijke
+buitverdeling. Het is geen Wowhead-steekproef en geen gemeten Forever-kans.
+
+De resolver volgt alleen ondubbelzinnige, voorwaardevrije selectiepaden.
+Questvoorwaarden, andere voorwaarden, overlappende of herhaalde referenties,
+en poolkeuzes die afhangen van eerder gekozen loot behouden hun itemrelatie,
+maar krijgen geen getal. Een nulwaarde bij een gelijk verdeelde pool is niet
+zomaar 0% kans. Waar een veilige berekening ontbreekt, toont de addon een
+streepje. Details en gerichte berekeningstests staan in
+Source/cmangos/build_reference.py; de normalisatie staat in
+Source/cmangos/classic_reference.json.
+
+Gebruikte kanssemantiek is gecontroleerd tegen:
+https://github.com/cmangos/mangos-classic/blob/c633638e8d08a9c2e408c93743720f5f65e420fb/src/game/Loot/LootMgr.cpp
+
+3. AANVULLENDE CLASSIC-RELATIES EN ZONES: LOOTINSIGHT / PFQUEST
+
+Officiële bronrelease:
+https://www.curseforge.com/wow/addons/lootinsight-forever/files/9227335
+https://edge.forgecdn.net/files/9227/335/LootInsight_Forever_2.18.0.zip
+
+Versie 2.18.0; uitgebracht 17 oktober 2026.
+SHA-256:
+60338c9dac22f6a0e19456668f639b9518b9f7f04f5f3402c637952df1d81108
+
+De auteur noemt ReferenceData.lua expliciet een CMaNGOS Classic-referentie,
+niet geverifieerd voor Forever. Het bestand bevat itemrelaties maar geen
+percentages. Het precieze moment van zijn onderliggende database-import is
+niet vastgelegd. De datum hierboven is de datum van de addonrelease.
+
+Relaties die niet al in de afzonderlijke SQL-corpse-tabel staan blijven
+beschikbaar als 'Classic · aanvullende relaties zonder kans'. Ook NPC's die
+alleen in deze bron voorkomen blijven beschikbaar. Er worden geen percentages
+uit de SQL-dump op deze andere bron geplakt. Een dubbele relatie hoeft niet
+als tweede aanvullende rij te worden herhaald; dat bewijst geen gelijke kans
+tussen de twee snapshots.
+
+ClassicWorldSpawns.lua bevat exacte zonekaart-coördinaten uit pfQuest Vanilla.
+Die leveren 2.936 expliciete NPC-toewijzingen over 46 Classic-buitenzones.
+Bron: https://github.com/shagu/pfQuest
+Licentie coördinaten: MIT, Copyright 2017–2021 Eric Mauser (Shagu).
+
+SQL-terreinkaarten identificeren daarnaast bekende instances en hun trash.
+Deze server-map-ID's worden niet als UIMapID gebruikt. Bij gedeelde kaarten
+zoals Scarlet Monastery wordt een algemene instantiecategorie gebruikt waar
+de precieze vleugel niet is aangetoond. Er blijven 846 NPC's met een onbekende
+locatie; die staan herkenbaar onder 'Locatie onbekend (Classic)'.
+
+UIMapID-koppelingen komen uit de hierboven genoemde LootInsight-bron.
+De client haalt de bijbehorende zonenamen op via C_Map.GetMapInfo.
+
+Dit maakt een Classic-spawn nog niet tot een bevestigde Forever-spawn.
+De bron- en licentievermeldingen zijn behouden in Licenses/ en Source/.
+
+4. BEKENDE FOREVER-BÈTADROPS: LOOTIFIED
+
+Bronrelease: Lootified 1.2.0 door Alen, oorspronkelijk gepubliceerd op
+https://www.curseforge.com/wow/addons/lootified/files/9112707
+
+De projectpagina is bij de broncontrole niet meer beschikbaar. Het officiële
+publieke releasebestand was wel bereikbaar:
+https://edge.forgecdn.net/files/9112/707/Lootified-1.2.0.zip
+
+SHA-256:
+6446886ad6fd9a58b5edbf4661aef3fe05970e9f131408c485d320ebf375777c
+Licentie van de gebruikte datatabellen: GPL-3.0.
+Snapshot: 9 oktober 2026; bijbehorende clientbuild 1.60.1.70291.
+
+Deze aanvullende laag beperkt zich tot bekende NPC/item-koppelingen van de
+nieuwe Forever-dungeons Hall of Thanes, Ruins of Lordaeron, Excavation Site:
+Wetlands en City of Dalaran. Dat zijn 72 rijen voor 22 NPC's. Een record zonder
+bekend NPC-ID wordt niet aan een verzonnen creature gekoppeld. Instances met
+nog lege lootlijsten leveren geen verzonnen loot op.
+
+Lootified vermeldt in README en THIRD_PARTY_NOTICES dat veel van zijn algemene
+lootpercentages uit Classic komen. Die worden daarom niet als Forever-kansen
+meegenomen. De gedateerde Forever-koppelingen blijven een aparte, onvolledige
+referentie met onbekend percentage. Ze zijn geen verificatie na de launch.
+
+De bronnotice noemt daarnaast kaartillustraties met afzonderlijke rechten.
+RicoLoot gebruikt alleen de datatabellen; die illustraties worden niet meegeleverd.
+
+5. FOREVER-WAARNEMINGEN: EVERLOOT
+
+Data from Everloot (https://everloot.app), CC BY-SA 4.0.
+https://creativecommons.org/licenses/by-sa/4.0/
+
+Bron: https://everloot.app/docs/api/rollups-drops
+
+De optionele updater bewaart openbare Everloot-waarnemingen in de aparte
+RicoLootEverloot-map. De gegevens blijven onder CC BY-SA 4.0 en worden als
+afzonderlijke tabellen naast de Classic-referentie getoond. Een percentage is
+het aandeel geopende lootvensters waarin het item voorkwam. De bron telt
+rapporterende installaties per NPC en leidt geen locaties of lootmethode af.
+
+6. REPRODUCTIE EN TECHNISCHE GRENZEN
+
+Source/build_ricoloot_data.py en de volledige gebruikte genormaliseerde
+invoertabellen reproduceren Data.lua met alleen Python 3.10+.
+Source/README.txt beschrijft het commando. Source/input-manifest.json bevat
+de inputbestanden, gepinde bron-URL's, revisies en SHA-256-controles.
+
+De grote tabellen zijn als compacte strings opgeslagen. De addon bouwt bij
+de eerste zoekactie kleine naam- en zone-indexen. Alleen een geopende loottabel
+wordt naar rijen vertaald; er worden maximaal zes gedecodeerde tabellen
+bewaard. Gedeelde LootIds delen één brontabel. Dit levert vooraf beschikbare
+data zonder een kill-/lootcollector of een scanlus op ieder schermframe.
+
+Een volledige, actuele en vrij herbruikbare Forever-loottabel voor elke mob
+was in de onderzochte bronnen niet beschikbaar. De addon maakt dat gat
+zichtbaar met bronlabels, datums, aparte methoden en ontbrekende percentages;
+hij vult het niet met aannames.

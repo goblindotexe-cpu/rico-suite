@@ -1,0 +1,107 @@
+{
+  "compiled": "2026-11-06",
+  "generator": "build_ricoloot_data.py",
+  "inputs": [
+    {
+      "file": "build_ricoloot_data.py",
+      "bytes": 16132,
+      "sha256": "acfe1ce509ada2f124520aef28889bb15b5912e8c64901e101c4f4ea52ee982e"
+    },
+    {
+      "file": "lootinsight-data.json",
+      "bytes": 8319418,
+      "sha256": "3fc90df6f48b625c2a0b6e1c8fb9019e08c0cdb23a267918f21fed63c07a3daa"
+    },
+    {
+      "file": "lootified-data.json",
+      "bytes": 1332575,
+      "sha256": "e6fe24eb9d0b945df8ed9b717f2b6e605f94874bc6d82d8d1255232d28f8a65e"
+    },
+    {
+      "file": "lootinsight-9227335/LootInsight/LICENSE_GPL-3.0.txt",
+      "bytes": 35149,
+      "sha256": "3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986"
+    },
+    {
+      "file": "lootinsight-9227335/LootInsight/THIRD_PARTY_LICENSE_cMaNGOS.txt",
+      "bytes": 296,
+      "sha256": "e3ec1461fd3705a76e86f5db54da3887b5bf90f6b4ca221fdfb6b2ea289aca1b"
+    },
+    {
+      "file": "lootinsight-9227335/LootInsight/PFQUEST_LICENSE.txt",
+      "bytes": 1081,
+      "sha256": "7ee3c5402cd719de230f3bbc59a6506a3b2b65981d0d793f143fa5b08f926510"
+    },
+    {
+      "file": "lootified-9112707/Lootified/THIRD_PARTY_NOTICES.md",
+      "bytes": 8964,
+      "sha256": "18239f4091f3f18ac618a151e52db90de1aad5d15f6e1eb050bb25a9e5f7b428"
+    },
+    {
+      "file": "cmangos/classic_reference.json",
+      "bytes": 36755720,
+      "sha256": "b2c2e19645020b04ed3eefe94fbecb0837e9759a7f1312a05100736dac57f1b1"
+    },
+    {
+      "file": "cmangos/build_reference.py",
+      "bytes": 14784,
+      "sha256": "c18aaa319d35dfcd94e3f8b8c068c28fa790a0b65cc14a219e4f4e75ee7a5e00"
+    },
+    {
+      "file": "cmangos/LICENSE.md",
+      "bytes": 35148,
+      "sha256": "8b1ba204bb69a0ade2bfcf65ef294a920f6bb361b317dba43c7ef29d96332b9b"
+    },
+    {
+      "file": "cmangos/COPYRIGHT.md",
+      "bytes": 1123,
+      "sha256": "82d2406c330adb4e4b96795821f79e7c171332008f5827d9ddc6433045477385"
+    },
+    {
+      "file": "cmangos/AUTHORS",
+      "bytes": 954,
+      "sha256": "34d0bd78147053a9b51432ed0131c94ab40c281f22b03aa286176e3480172c9c"
+    },
+    {
+      "file": "cmangos/snapshot-info.json",
+      "bytes": 173,
+      "sha256": "5f5b33a448c2626d9bdc35067f022174e0f2c74b690daa721c5538917bec1f6d"
+    },
+    {
+      "file": "cmangos/summary.json",
+      "bytes": 1719,
+      "sha256": "d43778b52d5331300c55ae191cff61a9731682b9bc63abaaf2b7cb6704b2770f"
+    }
+  ],
+  "upstream": [
+    {
+      "name": "LootInsight Forever 2.18.0",
+      "url": "https://edge.forgecdn.net/files/9227/335/LootInsight_Forever_2.18.0.zip",
+      "sha256": "60338c9dac22f6a0e19456668f639b9518b9f7f04f5f3402c637952df1d81108",
+      "license": "GPL-3.0; coordinates from pfQuest MIT",
+      "used": "ReferenceData.lua and ClassicWorldSpawns.lua only; normalized retained tables"
+    },
+    {
+      "name": "Lootified 1.2.0",
+      "url": "https://edge.forgecdn.net/files/9112/707/Lootified-1.2.0.zip",
+      "sha256": "6446886ad6fd9a58b5edbf4661aef3fe05970e9f131408c485d320ebf375777c",
+      "license": "GPL-3.0 for data; no excluded artwork copied",
+      "used": "Data/WorldDrops.lua, Instances.lua, Items.lua, ItemStats.lua; normalized retained tables"
+    },
+    {
+      "key": "cmangos_classic_z2815",
+      "name": "CMaNGOS Classic-DB z2815 (Classic-referentie)",
+      "url": "https://github.com/cmangos/classic-db/blob/37eeeeb1d4c12f00ded1b542e758f71d6135d391/Full_DB/ClassicDB_1_12_1_z2815.sql.gz",
+      "license": "GPL-3.0; Blizzard copyright notice retained",
+      "revision": "37eeeeb1d4c12f00ded1b542e758f71d6135d391",
+      "date": "2023-10-09",
+      "dumpCompleted": "2023-10-09  6:14:27",
+      "gzipSHA256": "4f92db520868ab4e566726f68b5b2e380ae781209beaf22237b4f7f04600d0c0",
+      "sqlSHA256": "27ebb09a45a92820dbfee5290aad129b8e96e9b636add8bfe8cf1fb1aad1b68c",
+      "coreRevision": "c633638e8d08a9c2e408c93743720f5f65e420fb",
+      "note": "Classic DB-basiskans (1× lootrollen), basissnapshot 2023-10-09; niet bevestigd voor Forever. Percentages beschrijven uitsluitend aantoonbare DB-selectiepaden vóór servermodifiers, loot-slotlimieten en persoonlijke buitverdeling. Questvoorwaarden, andere voorwaarden, herhaalde/overlappende referenties en afhankelijke poolselectie blijven onbekend. De 437 latere repository-updates zijn niet toegepast.",
+      "subsequentUpdatesApplied": false,
+      "mapIdType": "worldMapIDs are old server terrain/instance map IDs; never use them as uiMapIDs"
+    }
+  ]
+}

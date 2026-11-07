@@ -1,0 +1,2 @@
+cMaNGOS Classic Database: https://github.com/cmangos/classic-db
+GPL-3.0. Source database was provided by the user as classic-all-db.zip. See upstream LICENSE and COPYRIGHT.md for terms, notices, and Blizzard-owned assets. This package carries derived NPC, item and loot data, not copied artwork.
