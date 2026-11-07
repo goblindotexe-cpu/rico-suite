@@ -9,7 +9,7 @@ the path to your installed RicoLoot addon.
 ```
 
 The updater creates `RicoLootEverloot` beside `RicoLoot`. The local cache
-survives WowUp releases, and the updater keeps the last validated snapshot if
+survives addon releases, and the updater keeps the last validated snapshot if
 a download fails. Fully restart WoW after creating the cache and make sure
 **RicoLoot Everloot Cache** is enabled in the AddOns list. After later updates,
 use `/reload` to load the new data and comparison. You can repeat the updater

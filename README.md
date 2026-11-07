@@ -11,15 +11,13 @@ tools, mining tools, and a combined inventory to World of Warcraft: Forever.
 
 ## Install and update
 
-In WowUp, select **World of Warcraft: Forever** and choose **Get Addons →
-Install from URL**. Paste the [Rico Suite repository](https://github.com/goblindotexe-cpu/rico-suite)
-link. Enable **Auto Update** for Rico Suite in **My Addons**. Close WoW before
-applying a release.
+1. Download **RicoSuite-forever.zip** from
+   [Releases](https://github.com/goblindotexe-cpu/rico-suite/releases).
+2. Close WoW and extract the three folders into your WoW installation's
+   `_forever_/Interface/AddOns`.
+3. Start WoW and open the Rico minimap menu. Use `/ri` for the combined inventory.
 
-For a manual installation, download **RicoSuite-forever.zip** from
-[Releases](https://github.com/goblindotexe-cpu/rico-suite/releases) and extract
-the three folders into your WoW installation's `_forever_/Interface/AddOns`.
-The Rico minimap menu opens the suite in game. Use `/ri` for the combined inventory.
+To update, repeat the first two steps with the latest release.
 
 ## Data and credits
 
@@ -29,7 +27,7 @@ Forever. The addon records personal observations locally in WoW's
 SavedVariables.
 
 The [optional Everloot helper](tools/README.md) refreshes public data on
-Windows. It keeps its cache separate so a WowUp release can replace the addon
+Windows. It keeps its cache separate so addon releases can replace the addon
 files without losing the latest downloaded snapshot.
 
 License and source notices live with the components they cover. RicoPlates
