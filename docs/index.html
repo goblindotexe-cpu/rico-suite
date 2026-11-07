@@ -3,11 +3,14 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#0a110f">
+  <meta name="theme-color" content="#090d0c">
   <meta name="description" content="Rico Suite brings custom nameplates, a loot browser, fishing and mining tools, and a unified inventory to World of Warcraft: Forever.">
   <title>Rico Suite for WoW Forever</title>
   <link rel="icon" href="rico.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css?v=2">
+  <script defer src="rico-liquid.js"></script>
+  <script defer src="rico-cast-eye.js"></script>
+  <script defer src="rico-preview.js"></script>
 </head>
 <body>
   <header class="site-header">
@@ -31,18 +34,34 @@
           <a class="button secondary" href="#install">Installation guide <span aria-hidden="true">↗</span></a>
         </div>
       </div>
-      <figure class="showcase">
-        <div class="demo-window" aria-hidden="true">
-          <div class="demo-head"><span>RICO PLATES</span><span class="demo-mark"></span></div>
-          <div class="demo-scene">
-            <div class="cast-eye"><svg viewBox="0 0 48 32" width="36" height="24"><path d="M3 16Q24-6 45 16Q24 38 3 16Z" fill="#e9a094" stroke="#f14553" stroke-width="3"/><circle cx="24" cy="16" r="8" fill="#8c1d31"/><path d="M24 11v10" stroke="#21090e" stroke-width="3"/><path d="m12 22-2 8m21-7 2 5" stroke="#e13a49" stroke-width="3" stroke-linecap="round"/></svg><span class="bolt">ϟ</span></div>
-            <div class="unit-name">Moonrage Whitescalp</div>
-            <div class="unit-row"><span class="unit-level">10</span><div class="health"><span>185 / 208</span></div></div>
-            <div class="cast-bar">Shadow Bolt</div>
+      <figure class="showcase" aria-labelledby="preview-title">
+        <div class="demo-window" data-rico-preview>
+          <div class="demo-head">
+            <canvas class="header-liquid" width="480" height="76" aria-hidden="true"></canvas>
+            <h2 id="preview-title">RICO <em>PLATES</em></h2>
           </div>
-          <div class="demo-footer"><span>Cast on you</span><span>Interrupt ready</span></div>
+          <div class="demo-scene" aria-hidden="true">
+            <div class="demo-unit">
+              <div class="unit-plate">
+                <div class="unit-name">Moonrage Whitescalp</div>
+                <div class="unit-level">10</div>
+                <div class="health"><canvas width="190" height="19"></canvas><span>185 / 208</span></div>
+                <div class="cast-bar" hidden><div class="cast-fill"></div><span>Shadow Bolt</span></div>
+              </div>
+              <div class="demo-eye"></div>
+            </div>
+          </div>
+          <div class="demo-footer" hidden>
+            <p class="demo-status" role="status">Moonrage Whitescalp is targeting you.</p>
+            <div class="demo-controls" role="group" aria-label="Preview controls">
+              <button class="demo-button demo-replay" type="button">Cast spell</button>
+              <button class="demo-button demo-interrupt" type="button" aria-pressed="true">Interrupt ready</button>
+              <button class="demo-button demo-distance" type="button" aria-pressed="false">Out of range</button>
+              <button class="demo-button demo-motion" type="button" aria-pressed="false">Pause motion</button>
+            </div>
+          </div>
         </div>
-        <figcaption>Illustrated preview of a nameplate and incoming-cast warning.</figcaption>
+        <figcaption>Try the in-game nameplate, targeting eye and incoming-cast warning.</figcaption>
       </figure>
     </section>
     <section id="addons" class="section shell" aria-labelledby="addons-title">
@@ -51,19 +70,19 @@
       <div class="addon-grid">
         <article class="addon">
           <div class="addon-top"><span class="index">01</span><code>/rp</code></div>
-          <h3>RicoPlates</h3>
+          <div class="addon-head"><canvas class="header-liquid" width="340" height="36" aria-hidden="true"></canvas><h3>RICO <em>PLATES</em></h3></div>
           <p>Animated health bars, player and target portraits, party alerts and a cast warning that tracks spells aimed at you.</p>
           <ul><li>Combined inventory <code>/ri</code></li><li>Mining pins, routes and skill help</li><li>Quest markers and map guidance</li></ul>
         </article>
         <article class="addon">
           <div class="addon-top"><span class="index">02</span><code>/rl</code></div>
-          <h3>RicoLoot</h3>
+          <div class="addon-head"><canvas class="header-liquid" width="340" height="36" aria-hidden="true"></canvas><h3>RICO <em>LOOT</em></h3></div>
           <p>Search by zone, creature or item. Compare the available reference and observation data, and record drops as you play.</p>
           <ul><li>Searchable loot tables</li><li>Local loot observations</li><li>Item wishlist and farming goals</li></ul>
         </article>
         <article class="addon">
           <div class="addon-top"><span class="index">03</span><code>/rf</code></div>
-          <h3>RicoFishing</h3>
+          <div class="addon-head"><canvas class="header-liquid" width="340" height="36" aria-hidden="true"></canvas><h3>RICO <em>FISHING</em></h3></div>
           <p>Look up fish and fishing areas, set a goal, and keep track of your catches without leaving the game.</p>
           <ul><li>Fishing guide and map tools</li><li>Catch and goal tracking</li><li>Shared Rico interface</li></ul>
         </article>
