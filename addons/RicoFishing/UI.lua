@@ -125,6 +125,17 @@ function U:Build()
         .. " direct Forever beta reports • partial loot coverage")
     local close = Button(frame, "Close", 72, 28, function() frame:Hide() end)
     close:SetPoint("TOPRIGHT", -24, -29)
+    if F.SessionLog then
+        local log = Button(frame, "Catch log", 99, 28, function() F.SessionLog:Toggle() end)
+        log:SetPoint("RIGHT", close, "LEFT", -8, 0)
+    end
+    if F.OneKey then
+        self.oneKeyCheck = Check(frame, "Use F while holding a fishing pole", "oneKey", 428, -33)
+        self.oneKeyStatus = Text(frame, 10, COLORS.mint)
+        self.oneKeyStatus:SetPoint("TOPLEFT", 432, -58)
+        self.oneKeyStatus:SetWidth(230)
+        self.oneKeyStatus:SetWordWrap(false)
+    end
     if type(UISpecialFrames) == "table" then UISpecialFrames[#UISpecialFrames + 1] = "RicoFishingWindow" end
 
     local listPanel = CreateFrame("Frame", nil, frame)
@@ -222,7 +233,7 @@ function U:Build()
     self.goal:SetScript("OnEnterPressed", function(self) F:SetGoal(tonumber(self:GetText())); self:ClearFocus() end)
     local setGoal = Button(frame, "Set goal", 74, 25, function() F:SetGoal(tonumber(U.goal:GetText())); U.goal:ClearFocus() end)
     setGoal:SetPoint("TOPLEFT", 532, -210)
-    local reset = Button(frame, "Reset session", 122, 25, function() F:ResetSession() end)
+    local reset = Button(frame, "New session", 122, 25, function() F:ResetSession() end)
     reset:SetPoint("TOPRIGHT", -28, -210)
     self.progress = Progress(frame, 490, 23)
     self.progress:SetPoint("TOPLEFT", 350, -249)
@@ -307,7 +318,9 @@ function U:Refresh()
         if F.db.hud then
             self.hud.name:SetText(entry.name)
             UpdateProgress(self.hud.progress, entry)
-            self.hud.detail:SetText("This session: " .. (F.session.items[entry.id] or 0) .. " • /rf opens the fishing guide")
+            local key = F.OneKey and F.OneKey.mode
+            local hint = key == "reel" and "F when the bobber splashes" or key == "cast" and "F to cast" or "/rf opens the guide"
+            self.hud.detail:SetText("This session: " .. (F.session.items[entry.id] or 0) .. " • " .. hint)
         end
     end
     if not self.frame or not self.frame:IsShown() then return end
@@ -344,6 +357,10 @@ function U:Refresh()
         F.session.items[entry.id] or 0, F.session.quantity, F.session.loots, rate and string.format(" • %.0f items/hour", rate) or ""))
     self:RefreshLocations(entry)
     for _, check in ipairs({self.hudCheck, self.pinsCheck, self.reportedCheck}) do check:SetChecked(F.db[check.key]) end
+    if self.oneKeyCheck then
+        self.oneKeyCheck:SetChecked(F.db.oneKey)
+        self.oneKeyStatus:SetText(F.OneKey:GetStatus())
+    end
 end
 
 function U:Toggle(force)

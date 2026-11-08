@@ -512,7 +512,9 @@ function ns.MinimapPoint()
 	local cx, cy = Minimap:GetCenter()
 	local mx, my = GetCursorPosition()
 	local u, v = (mx / scale - cx) / (Minimap:GetWidth() / 2), (my / scale - cy) / (Minimap:GetHeight() / 2)
-	if not (x and canaccessvalue(radius) and canaccessvalue(facing) and radius and facing) or u * u + v * v > 1 then
+	local square = GetMinimapShape and GetMinimapShape() == "SQUARE"
+	local distance = square and math.max(math.abs(u), math.abs(v)) or u * u + v * v
+	if not (x and canaccessvalue(radius) and canaccessvalue(facing) and radius and facing) or distance > 1 then
 		return nil
 	end
 	local cosine, sine = math.cos(facing), math.sin(facing)

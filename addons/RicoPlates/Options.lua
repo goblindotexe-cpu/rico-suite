@@ -129,6 +129,7 @@ function O:RefreshState()
         local status = RP.PartyFrames and RP.PartyFrames:GetStatus()
         self.partyStatus:SetText(type(status) == "table" and status.message or "Party styling is ready when group frames are available.")
     end
+    if self.minimapStatus and RP.Minimap then self.minimapStatus:SetText(RP.Minimap:GetStatus()) end
     if self.questSourceStatus then
         local status = RP.Quest and RP.Quest.GetStatus and RP.Quest:GetStatus()
         local message = "Questie not loaded; built-in quest detection is active."
@@ -165,9 +166,11 @@ function O:RefreshPreview()
     local shown = self.frame:IsShown()
     local unitPage = self.selectedPage == 5
     local partyPage = self.selectedPage == 6
-    if self.nameplatePreview then self.nameplatePreview:SetShown(not unitPage and not partyPage) end
+    local mapPage = self.selectedPage == 7
+    if self.nameplatePreview then self.nameplatePreview:SetShown(not unitPage and not partyPage and not mapPage) end
     if self.unitPreviewPanel then self.unitPreviewPanel:SetShown(unitPage) end
     if self.partyPreviewPanel then self.partyPreviewPanel:SetShown(partyPage) end
+    if self.minimapHelp then self.minimapHelp:SetShown(mapPage) end
     local unitFrames = RP.UnitFrames
     if shown and unitPage and not self.unitPreview and self.unitPreviewPanel
         and unitFrames and type(unitFrames.CreateOptionsPreview) == "function" then
@@ -191,7 +194,7 @@ function O:RefreshPreview()
     if shown and partyPage and self.partyPreview and party and type(party.RefreshOptionsPreview) == "function" then
         party:RefreshOptionsPreview(self.partyPreview)
     end
-    if not shown or unitPage or partyPage then
+    if not shown or unitPage or partyPage or mapPage then
         for _, p in ipairs(self.demos) do RP.Plates:StopBubbles(p) end
         if shown and unitPage and self.unitPreview and unitFrames and type(unitFrames.RefreshOptionsPreview) == "function" then
             unitFrames:RefreshOptionsPreview(self.unitPreview)
@@ -232,8 +235,8 @@ function O:Build()
     local close = Button(frame, "Close", 72, 28, function() frame:Hide() end)
     close:SetPoint("TOPRIGHT", -24, -29)
     self.pages, self.tabs = {}, {}
-    local names = {"Nameplates", "Style", "Auras", "Quests", "Unitframes", "Party"}
-    local widths, tabX = {82, 54, 54, 58, 78, 64}, 24
+    local names = {"Nameplates", "Style", "Auras", "Quests", "Unitframes", "Party", "Minimap"}
+    local widths, tabX = {79, 43, 45, 51, 72, 47, 60}, 24
     for i, name in ipairs(names) do
         local index = i
         local tab = Button(frame, name, widths[i], 32, function() O:SelectPage(index) end)
@@ -396,6 +399,14 @@ function O:Build()
         10, COLORS.muted)
     partyNote:SetPoint("TOPLEFT", 5, -385); partyNote:SetWidth(420); partyNote:SetWordWrap(true)
 
+    local minimap = self.pages[7]
+    Checkbox(minimap, 0, "squareMinimap", "Use the square Rico minimap")
+    Checkbox(minimap, -33, "minimapClock", "Show the clock inside the minimap")
+    Checkbox(minimap, -66, "minimapOverview", "Enable one extra zoom-out step outdoors")
+    self.minimapStatus = Text(minimap, "", 11, COLORS.mint)
+    self.minimapStatus:SetPoint("TOPLEFT", 5, -105)
+    self.minimapStatus:SetWidth(420); self.minimapStatus:SetWordWrap(true)
+
     local preview = CreateFrame("Frame", nil, frame)
     self.nameplatePreview = preview
     preview:SetPoint("TOPLEFT", 485, -85)
@@ -464,6 +475,25 @@ function O:Build()
     partyTitle:SetPoint("TOPLEFT", 20, -16)
     local partyHint = Text(partyPreview, "The same liquid bars, portraits and typography", 10, COLORS.muted)
     partyHint:SetPoint("TOPLEFT", 20, -35)
+    local mapHelp = CreateFrame("Frame", nil, frame)
+    self.minimapHelp = mapHelp
+    mapHelp:SetPoint("TOPLEFT", 485, -85); mapHelp:SetSize(430, 492)
+    T:Panel(mapHelp)
+    local mapTitle = Text(mapHelp, "MINIMAP CONTROLS", 11, COLORS.mint)
+    mapTitle:SetPoint("TOPLEFT", 20, -16)
+    local tips = {
+        {"Live minimap", "Scroll or use the + and − buttons. Your usual tracking, mining and quest-route pins are shown here."},
+        {"Area overview", "At the widest live zoom, scroll down once more outdoors to see more of the zone. Zoom in once to return to live tracking."},
+        {"Clock", "Local and realm time use 24-hour format. Hover to see both, or click to open Blizzard’s clock settings."},
+    }
+    for i, tip in ipairs(tips) do
+        local y = -57 - (i - 1) * 80
+        local title = Text(mapHelp, tip[1], 12)
+        title:SetPoint("TOPLEFT", 20, y)
+        local detail = Text(mapHelp, tip[2], 11, COLORS.muted)
+        detail:SetPoint("TOPLEFT", 20, y - 22)
+        detail:SetWidth(380); detail:SetWordWrap(true)
+    end
     self.state = Text(frame, "", 11)
     self.state:SetPoint("BOTTOMLEFT", 25, 49)
     local reset = Button(frame, "Defaults", 145, 28, function() RP:Reset() end)

@@ -75,17 +75,29 @@ local function Points(line, parent, x1, y1, x2, y2)
     line:SetEndPoint("BOTTOMLEFT", parent, x2, y2)
 end
 
+local function VerticalPoints(line, parent, x1, y1, x2, y2)
+    Points(line, parent, y1, x1, y2, x2)
+end
+
 function T:Liquid(parent, settings)
     local config = settings or {}
+    local vertical = config.vertical == true
+    local place = vertical and VerticalPoints or Points
     local liquid = CreateFrame("Frame", nil, parent)
     liquid:SetAllPoints()
     liquid:EnableMouse(false)
     liquid:SetClipsChildren(true)
     liquid.clock, liquid.accumulator = 0, 0
-    liquid.width, liquid.height = config.width or parent:GetWidth(), config.height or parent:GetHeight()
+    -- Logical width follows the flow; logical height is the thickness of the strip.
+    liquid.width = config.width or (vertical and parent:GetHeight() or parent:GetWidth())
+    liquid.height = config.height or (vertical and parent:GetWidth() or parent:GetHeight())
     liquid.tint = config.color or {0.28, 0.95, 0.39}
     liquid.fps = config.health and 20 or config.compact and 24 or 30
     liquid.segments = (config.health or config.compact) and 24 or 80
+    local segments = config.segments
+    if type(segments) == "number" and segments == segments then
+        liquid.segments = math.max(4, math.min(80, math.floor(segments)))
+    end
     liquid.strands = config.health and 3 or config.compact and 2 or 5
     liquid.bubbleCount = config.bubbleCount or (config.health and 3 or 14)
     liquid.bubbleScale = config.bubbleScale or (config.health and 1 or 2.2)
@@ -118,9 +130,15 @@ function T:Liquid(parent, settings)
             for i, wash in ipairs(self.wash) do
                 local y = (i - 1) / #self.wash
                 local light = 0.08 + 0.25 * sin(y * pi) ^ 2 + 0.08 * (1 - y)
+                local thickness = height / #self.wash + 0.35
                 wash:ClearAllPoints()
-                wash:SetPoint("BOTTOMLEFT", self, "BOTTOMLEFT", 0, y * height)
-                wash:SetSize(width, height / #self.wash + 0.35)
+                if vertical then
+                    wash:SetPoint("BOTTOMLEFT", self, "BOTTOMLEFT", y * height, 0)
+                    wash:SetSize(thickness, width)
+                else
+                    wash:SetPoint("BOTTOMLEFT", self, "BOTTOMLEFT", 0, y * height)
+                    wash:SetSize(width, thickness)
+                end
                 wash:SetVertexColor(r * light, g * light, b * light, config.health and 0.42 or 1)
             end
         end
@@ -142,8 +160,8 @@ function T:Liquid(parent, settings)
                 local shine = 0.14 + 0.28 * sin(x2 * 0.021 + time * 0.38 + strand * 1.7) ^ 4
                 part.glow:SetColorTexture(r, g, b, config.health and 0.12 or 0.10)
                 part.core:SetColorTexture(0.32 + r * 0.68, 0.26 + g * 0.74, 0.20 + b * 0.80, shine)
-                Points(part.glow, self, x1, y1, x2, y2)
-                Points(part.core, self, x1, y1, x2, y2)
+                place(part.glow, self, x1, y1, x2, y2)
+                place(part.core, self, x1, y1, x2, y2)
                 x1, y1 = x2, y2
             end
         end
@@ -163,7 +181,7 @@ function T:Liquid(parent, settings)
                     local a1, a2 = (j - 1) * pi * 2 / #bubble.lines, j * pi * 2 / #bubble.lines
                     local highlight = a1 >= pi / 6 and a1 <= pi * 5 / 6 and 1 or 0.30
                     line:SetColorTexture(0.30 + r * 0.7, 0.30 + g * 0.7, 0.25 + b * 0.75, opacity * highlight)
-                    Points(line, self, x + cos(a1) * radius, y + sin(a1) * radius,
+                    place(line, self, x + cos(a1) * radius, y + sin(a1) * radius,
                         x + cos(a2) * radius, y + sin(a2) * radius)
                 end
             end

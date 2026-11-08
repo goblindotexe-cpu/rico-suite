@@ -5,9 +5,9 @@ tools, mining tools, and a combined inventory to World of Warcraft: Forever.
 
 | Addon | Open in game | Includes |
 | --- | --- | --- |
-| RicoPlates | `/rp` | Nameplates, cast alerts, party frames, quest guidance, mining, and inventory |
+| RicoPlates | `/rp` | Nameplates, cast alerts, party frames, square minimap, quest guidance, mining, and inventory |
 | RicoLoot | `/rl` | Loot tables, local observations, and item goals |
-| RicoFishing | `/rf` | Fishing guide, catch tracking, and goals |
+| RicoFishing | `/rf` | One-Key Fishing on **F**, per-character catch log, fishing guide, and goals |
 
 ## Install and update
 
@@ -18,6 +18,11 @@ tools, mining tools, and a combined inventory to World of Warcraft: Forever.
 3. Start WoW and open the Rico minimap menu. Use `/ri` for the combined inventory.
 
 To update, repeat the first two steps with the latest release.
+
+For One-Key Fishing, equip a fishing pole. Press **F** to cast, press **F** at
+the splash to reel in and collect the catch, then press **F** to cast again.
+Open `/rf log` to browse the current and previous sessions. Open `/rp minimap`
+to configure the square minimap, clock, and additional area overview.
 
 ## Data and credits
 

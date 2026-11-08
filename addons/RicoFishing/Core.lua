@@ -1,8 +1,8 @@
 local addonName, F = ...
 _G.RicoFishing = F
-F.name, F.version = addonName, "1.3.1"
+F.name, F.version = addonName, "1.4.0"
 F.session = { items = {}, quantity = 0, loots = 0 }
-F.defaults = { selected = 6291, goal = 20, pins = true, reportedPins = false, hud = true,
+F.defaults = { selected = 6291, goal = 20, pins = true, reportedPins = false, hud = true, oneKey = true,
     hudX = 0, hudY = 165 }
 
 function F.IsSecret(value) return issecretvalue and issecretvalue(value) or false end
@@ -52,6 +52,7 @@ function F:GetIcon(id)
 end
 
 function F:Refresh()
+    if self.OneKey and self.OneKey.events and self.OneKey.setting ~= self.db.oneKey then self.OneKey:Update() end
     if self.UI then self.UI:Refresh() end
 end
 
@@ -84,6 +85,7 @@ end
 function F:SetOption(key, value)
     if type(self.defaults[key]) ~= "boolean" or type(value) ~= "boolean" then return false end
     self.db[key] = value
+    if key == "oneKey" and self.OneKey then self.OneKey:Update() end
     if self.Map then self.Map:Refresh() end
     self:Refresh()
     return true
@@ -112,6 +114,7 @@ function F:SnapshotFishingLoot()
             end
         end
     end
+    return window
 end
 
 function F:ReceiveLootSlot(slot)
@@ -120,20 +123,29 @@ function F:ReceiveLootSlot(slot)
     local data = window and window.slots[slot]
     if not data or data.received then return end
     data.received = true
+    local firstInWindow = not window.credited
+    window.credited = true
+    if self.SessionLog then
+        self.SessionLog:Record(data.id, data.quantity, firstInWindow)
+        self:QueueRefresh()
+        return
+    end
     local session = self.session
     if not session.started then session.started = GetTime and GetTime() or 0 end
     session.items[data.id] = (session.items[data.id] or 0) + data.quantity
     session.quantity = session.quantity + data.quantity
-    if not window.credited then session.loots = session.loots + 1; window.credited = true end
+    if firstInWindow then session.loots = session.loots + 1 end
     self:QueueRefresh()
 end
 
 function F:ResetSession()
-    self.session = { items = {}, quantity = 0, loots = 0 }
+    if self.SessionLog then self.SessionLog:Reset()
+    else self.session = { items = {}, quantity = 0, loots = 0 } end
     self:Refresh()
 end
 
 function F:GetSessionRate()
+    if self.SessionLog then return self.SessionLog:GetRate() end
     local now = GetTime and GetTime()
     local start = self.session.started
     if not self.Number(now) or not self.Number(start) or now - start < 60 then return nil end
@@ -146,6 +158,7 @@ function F:Status()
     self:Print("v" .. self.version .. " | " .. #self.Data.order .. " catalog items; "
         .. observed .. " with direct Forever catch reports. Not a complete server loot database.")
     if self.Map then self:Print(self.Map:GetStatus()) end
+    if self.OneKey then self:Print(self.OneKey:GetStatus()) end
     self:Print("Session: " .. self.session.quantity .. " received items from " .. self.session.loots .. " fishing loot windows.")
 end
 
@@ -154,7 +167,11 @@ function F:Command(text)
     local command, argument = text:match("^%s*(%S*)%s*(.-)%s*$")
     command = (command or ""):lower()
     if command == "status" then self:Status()
-    elseif command == "reset" then self:ResetSession(); self:Print("Fishing session reset; catalog and settings preserved.")
+    elseif command == "reset" then self:ResetSession(); self:Print("New fishing session started.")
+    elseif command == "log" and self.SessionLog then self.SessionLog:Toggle()
+    elseif command == "key" and self.OneKey then
+        self:SetOption("oneKey", not self.db.oneKey)
+        self:Print(self.OneKey:GetStatus())
     elseif command == "doel" or command == "goal" then
         if not self:SetGoal(tonumber(argument)) then self:Print("Use /rf goal 20.") end
     elseif command == "hud" then self:SetOption("hud", not self.db.hud)
@@ -175,6 +192,8 @@ function F:Initialize()
     self.db.goal = math.max(1, math.min(9999, math.floor(self.db.goal)))
     if not self.Number(self.db.hudX) then self.db.hudX = 0 end
     if not self.Number(self.db.hudY) then self.db.hudY = 165 end
+    if self.SessionLog then self.SessionLog:Initialize() end
+    if self.OneKey then self.OneKey:Initialize() end
     if self.Map then self.Map:Initialize() end
     if self.UI then self.UI:Initialize() end
     self:Select(self.db.selected)
@@ -189,7 +208,9 @@ for _, event in ipairs({"ADDON_LOADED", "PLAYER_ENTERING_WORLD", "LOOT_READY", "
 events:SetScript("OnEvent", function(_, event, argument)
     if event == "ADDON_LOADED" and argument == addonName then F:Initialize(); return end
     if not F.initialized then return end
-    if event == "LOOT_READY" or event == "LOOT_OPENED" then F:SnapshotFishingLoot()
+    if event == "LOOT_READY" or event == "LOOT_OPENED" then
+        local window = F:SnapshotFishingLoot()
+        if event == "LOOT_OPENED" and F.OneKey then F.OneKey:Loot(window, argument) end
     elseif event == "LOOT_SLOT_CLEARED" then F:ReceiveLootSlot(argument)
     elseif event == "LOOT_CLOSED" then F.lootWindow = nil
     elseif event == "BAG_UPDATE_DELAYED" or event == "GET_ITEM_INFO_RECEIVED" then F:QueueRefresh()

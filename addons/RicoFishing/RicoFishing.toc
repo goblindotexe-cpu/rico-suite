@@ -1,13 +1,16 @@
 ## Interface: 16001
 ## Title: RicoFishing
-## Notes: Forever fishing guide with source status, map markers, and fishing sessions.
+## Notes: Forever fishing guide with map markers, one-key fishing, and a catch log.
 ## Author: Rico
-## Version: 1.3.1
+## Version: 1.4.0
 ## SavedVariables: RicoFishingDB, RicoSuiteDB
+## SavedVariablesPerCharacter: RicoFishingLogDB
 ## OptionalDeps: Questie
 Data.lua
 Core.lua
 RicoUI.lua
+OneKey.lua
+SessionLog.lua
 RicoSuite.lua
 RicoLauncher.lua
 Map.lua

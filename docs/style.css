@@ -41,6 +41,8 @@ h3 { font-size: 24px; line-height: 1.2; margin: 18px 0 12px; }
 .primary { background: var(--accent); border-color: var(--accent); color: #06130c; }
 .primary:hover { background: #9bffc9; }
 .secondary:hover { border-color: var(--accent); }
+.feature-link { display: inline-flex; align-items: center; gap: 8px; margin-top: 16px; color: var(--accent); font-size: 13px; }
+.feature-link:hover { text-decoration: underline; text-underline-offset: 4px; }
 .showcase { margin: 0; min-width: 0; }
 .demo-window { container-type: inline-size; overflow: hidden; border: 1px solid var(--line); border-top-color: var(--line-top); border-bottom-color: var(--line-bottom); background: #050706; box-shadow: 0 20px 60px #0006; }
 .demo-head { position: relative; display: grid; place-items: center; height: 76px; border-bottom: 1px solid #1c3026; background: #081611; }
@@ -91,6 +93,16 @@ figcaption { margin-top: 12px; color: var(--muted); font-size: 12px; }
 .addon p { margin-bottom: 16px; }
 .addon ul { margin: 0; padding-inline-start: 17px; font-size: 14px; }
 .addon li::marker { color: var(--accent); }
+kbd { display: inline-grid; place-items: center; min-width: 1.5em; padding: 0 4px; border: 1px solid #3d6852; border-radius: 3px; background: #14281e; color: var(--accent); font: 700 .85em/1.45 ui-monospace, monospace; }
+.fishing-feature { display: grid; grid-template-columns: .92fr 1fr; align-items: center; gap: clamp(24px, 6vw, 72px); }
+.fishing-feature .muted { max-width: 440px; }
+.fishing-feature .muted:last-child { margin-bottom: 0; }
+.fishing-flow { margin: 0; padding: 0; list-style: none; border: 1px solid var(--line); border-top-color: var(--line-top); background: var(--panel); }
+.fishing-flow li { display: grid; grid-template-columns: 36px minmax(0, 1fr); align-items: center; gap: 14px; padding: 13px 17px; }
+.fishing-flow li + li { border-top: 1px solid var(--line); }
+.fishing-flow kbd { min-height: 32px; box-shadow: inset 0 -2px #070d0a; font-size: 15px; }
+.fishing-flow strong, .fishing-flow span { display: block; }
+.fishing-flow span { color: var(--muted); font-size: 13px; }
 code, .repo-url { font: .87em ui-monospace, monospace; color: var(--gold); overflow-wrap: anywhere; }
 .install { background: var(--panel); }
 .install-grid { display: grid; grid-template-columns: 0.8fr 1fr; gap: 60px; }
@@ -102,7 +114,7 @@ code, .repo-url { font: .87em ui-monospace, monospace; color: var(--gold); overf
 .manual { margin: 0; font-size: 14px; }
 .footer { gap: 16px; border-top: 1px solid var(--line); padding-block: 24px; color: var(--muted); font-size: 13px; }
 @media (max-width: 800px) {
-  .hero, .install-grid { grid-template-columns: 1fr; gap: 32px; }
+  .hero, .install-grid, .fishing-feature { grid-template-columns: 1fr; gap: 32px; }
   .hero { padding-block: 55px; }
   .showcase { max-width: 520px; }
   .addon-grid { grid-template-columns: 1fr; }

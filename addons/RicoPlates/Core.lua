@@ -1,6 +1,6 @@
 local addonName, RP = ...
 _G.RicoPlates = RP
-RP.name, RP.version = addonName, "1.18.0"
+RP.name, RP.version = addonName, "1.19.4"
 RP.media = "Interface\\AddOns\\" .. addonName .. "\\Media\\"
 RP.defaults = {
     enabled = true, showFriendlyNPCs = false,
@@ -20,6 +20,7 @@ RP.defaults = {
     showClassResources = true, showTargetOfTarget = true,
     partyFrames = true, partyFrameScale = 0.8, partyFrameWidth = 200, partyFrameHeight = 20,
     partyLowHealth = true, partyLowHealthThreshold = 25, partyDispels = true,
+    squareMinimap = true, minimapClock = true, minimapOverview = true,
     layoutGridSnap = true, layoutFrameSnap = true, layoutGridSize = 8, layoutSnapDistance = 12,
     unitFrameWidth = 230, unitFrameHeight = 24, unitFrameScale = 1,
     unitFramePositions = {
@@ -270,6 +271,7 @@ function RP:ApplySettings()
     if self.Quest and self.Quest.UpdateSettings then self.Quest:UpdateSettings() end
     if self.QuestRoutes then self.QuestRoutes:UpdateSettings() end
     if self.World and self.World.UpdateSettings then self.World:UpdateSettings() end
+    if self.Minimap then self.Minimap:UpdateSettings() end
     if self.Options and self.Options.RefreshPreview then self.Options:RefreshPreview() end
 end
 
@@ -380,12 +382,13 @@ local function Slash(message)
     elseif command == "restore" or command == "herstel" then RP:Restore()
     elseif command == "reset" then RP:Reset()
     elseif command == "preview" or command == "voorbeeld" then RP.Options:Toggle(true)
+    elseif command == "minimap" then RP.Options:Toggle(true); RP.Options:SelectPage(7)
     elseif command == "unlock" or command == "verplaatsen" then
         if RP.UnitFrames then RP.UnitFrames:SetUnlocked(true) end
     elseif command == "lock" or command == "vastzetten" then
         if RP.UnitFrames then RP.UnitFrames:SetUnlocked(false) end
     elseif command == "help" then
-        RP:Print("/rp: settings | /rp preview: preview | /rp unlock / lock: move unitframes | /rp status: diagnostics | /rp restore: restore game UI | /rp reset: defaults.")
+        RP:Print("/rp: settings | /rp minimap: map settings | /rp unlock / lock: move unitframes | /rp status: diagnostics | /rp restore: restore game UI | /rp reset: defaults.")
     else RP.Options:Toggle() end
 end
 
@@ -394,6 +397,7 @@ function RP:Initialize()
     self.initialized = true
     if self.Mining then self.Mining:Initialize() end
     if self.Inventory then self.Inventory:Initialize() end
+    if self.Minimap then self.Minimap:Initialize() end
     if not C_NamePlate or not C_NamePlate.GetNamePlateForUnit then
         self:Print("This client has no supported nameplate API. Use the Forever client.")
         return
