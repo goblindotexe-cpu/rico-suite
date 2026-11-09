@@ -102,6 +102,25 @@ local function SnapshotAlpha(state,object)
     if not ok then error("Native party artwork could not be tracked.",0) end
 end
 
+local function HidePortrait(state)
+    state.writingPortrait=true
+    local ok=pcall(state.portrait.Hide,state.portrait)
+    state.writingPortrait=false
+    return ok
+end
+
+local function TrackPortrait(state)
+    local function OnVisibility(shown)
+        if not state.active or state.writingPortrait or not Public(shown) then return end
+        state.portraitShown=shown and true or false
+        if shown then HidePortrait(state) end
+    end
+    local portrait=state.portrait
+    hooksecurefunc(portrait,"Show",function() OnVisibility(true) end)
+    hooksecurefunc(portrait,"Hide",function() OnVisibility(false) end)
+    hooksecurefunc(portrait,"SetShown",function(_,shown) OnVisibility(shown) end)
+end
+
 local function SnapshotMouse(state,object)
     if not Object(object) or state.mouseMap[object] then return end
     state.mouseMap[object]=true
@@ -208,14 +227,18 @@ function P:BuildStandard(frame)
     local existing=self.entries[frame]
     if existing then return existing end
     local health=Field(frame,"HealthBarContainer")
-    if not Object(health) or not Object(Field(frame,"Portrait")) or not Object(Field(frame,"Name")) then
+    local portrait=Field(frame,"Portrait")
+    if not Object(health) or not Object(portrait) or not Object(Field(frame,"Name")) then
         return nil,"This party frame layout is not supported; the native frame was preserved."
     end
     local unit=CurrentUnit(frame)
     if not unit then return nil end
-    local state={native=frame,alphas={},alphaMap={},mouse={},mouseMap={},points={},pointMap={},fonts={},fontMap={},levels={},levelMap={}}
+    local state={native=frame,portrait=portrait,alphas={},alphaMap={},mouse={},mouseMap={},points={},pointMap={},fonts={},fontMap={},levels={},levelMap={}}
     local ok,reason=pcall(function()
-        for _,key in ipairs({"Portrait","Texture","VehicleTexture","Flash","Name","ResurrectableIndicator","HealthBarContainer","ManaBar"}) do
+        -- Blizzard repaints the portrait's vertex alpha during health updates.
+        -- Its visibility can be owned independently while it keeps updating.
+        TrackPortrait(state)
+        for _,key in ipairs({"Texture","VehicleTexture","Flash","Name","ResurrectableIndicator","HealthBarContainer","ManaBar"}) do
             SnapshotAlpha(state,Field(frame,key))
         end
         local nativeOverlay=Field(frame,"PartyMemberOverlay")
@@ -285,6 +308,8 @@ function P:ApplyStandard(state)
     if Combat() then self.pending=true; return false end
     local entry,frame=state.entry,state.native
     if not state.active then
+        state.portraitShown=Read(state.portrait,"IsShown")
+        if type(state.portraitShown)~="boolean" then error("Native party portrait visibility is unavailable.",0) end
         state.points,state.pointMap,state.fonts,state.fontMap,state.levels,state.levelMap={},{},{},{},{},{}
         for _,property in ipairs(state.alphas) do
             local before=Read(property.object,"GetAlpha")
@@ -308,6 +333,7 @@ function P:ApplyStandard(state)
     for _,property in ipairs(state.mouse) do property.object[property.setter](property.object,false) end
     self:NativeIndicators(state)
     state.active=true
+    if not HidePortrait(state) then error("Native party portrait could not be hidden.",0) end
     self.writingAlpha=true
     for _,property in ipairs(state.alphas) do property.object:SetAlpha(0) end
     self.writingAlpha=false
@@ -326,8 +352,10 @@ end
 
 function P:ReleaseStandard(state)
     if not state.active and not state.restorePending then return end
+    local wasActive=state.active
     state.active=false
     self:ClearStandard(state)
+    if wasActive then pcall(state.portrait.SetShown,state.portrait,state.portraitShown) end
     for _,property in ipairs(state.alphas) do
         if Read(property.object,"GetAlpha")==0 then pcall(property.object.SetAlpha,property.object,property.before) end
     end
