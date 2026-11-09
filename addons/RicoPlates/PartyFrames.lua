@@ -583,7 +583,7 @@ function P:Initialize()
     self.initialized=true
     local events=CreateFrame("Frame"); self.events=events
     for _,event in ipairs({"ADDON_LOADED","PLAYER_ENTERING_WORLD","GROUP_ROSTER_UPDATE","PLAYER_REGEN_ENABLED","PLAYER_REGEN_DISABLED",
-        "UNIT_HEALTH","UNIT_MAXHEALTH","UNIT_POWER_UPDATE","UNIT_POWER_FREQUENT","UNIT_MAXPOWER","UNIT_DISPLAYPOWER","UNIT_NAME_UPDATE",
+        "UNIT_HEALTH","UNIT_MAXHEALTH","UNIT_HEAL_PREDICTION","UNIT_POWER_UPDATE","UNIT_POWER_FREQUENT","UNIT_MAXPOWER","UNIT_DISPLAYPOWER","UNIT_NAME_UPDATE",
         "UNIT_PORTRAIT_UPDATE","UNIT_MODEL_CHANGED","UNIT_LEVEL","UNIT_CLASSIFICATION_CHANGED","UNIT_CONNECTION","UNIT_FLAGS","UNIT_FACTION",
         "UNIT_ENTERED_VEHICLE","UNIT_EXITED_VEHICLE","UNIT_GUILD_UPDATE","GUILD_ROSTER_UPDATE","PARTY_LEADER_CHANGED","ROLE_CHANGED_INFORM",
         "UNIT_SPELLCAST_START","UNIT_SPELLCAST_STOP","UNIT_SPELLCAST_FAILED","UNIT_SPELLCAST_INTERRUPTED","UNIT_SPELLCAST_DELAYED",
@@ -594,6 +594,15 @@ function P:Initialize()
         end
         if event:sub(1,5)=="UNIT_" then
             if not Public(unit) or type(unit)~="string" then return end
+            if event=="UNIT_HEAL_PREDICTION" then
+                for _,state in pairs(P.entries) do
+                    if state.active and state.entry.plate:IsShown() then
+                        RP.Plates:UpdateHealPreview(state.entry.plate.healPreview,state.entry.unit)
+                    end
+                end
+                -- Compact frames keep Blizzard's native incoming-heal layers.
+                return
+            end
             local portrait=event=="UNIT_PORTRAIT_UPDATE" or event=="UNIT_MODEL_CHANGED" or event=="UNIT_NAME_UPDATE"
             local function Matches(frame)
                 local token=CurrentUnit(frame)

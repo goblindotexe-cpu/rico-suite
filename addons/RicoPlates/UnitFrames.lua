@@ -324,6 +324,7 @@ function U:ClearVisuals(entry)
     if RP.QuestieIcons then RP.QuestieIcons:Detach(p) end
     if RP.LootButton then RP.LootButton:Detach(p) end
     RP.Plates:StopBubbles(p)
+    RP.Plates:UpdateHealPreview(p.healPreview)
     if RP.Auras then RP.Auras:Detach(p) end
     RP.Plates:SetPowerVisible(p, false)
     RP.Plates:SetCastVisible(p, false)
@@ -949,7 +950,7 @@ function U:Initialize()
     self.eventFrame = eventFrame
     local events = {
         "PLAYER_ENTERING_WORLD", "PLAYER_TARGET_CHANGED", "PLAYER_REGEN_ENABLED", "PLAYER_REGEN_DISABLED",
-        "UNIT_PET", "UNIT_TARGET", "UNIT_HEALTH", "UNIT_MAXHEALTH", "UNIT_POWER_UPDATE", "UNIT_POWER_FREQUENT", "UNIT_MAXPOWER",
+        "UNIT_PET", "UNIT_TARGET", "UNIT_HEALTH", "UNIT_MAXHEALTH", "UNIT_HEAL_PREDICTION", "UNIT_POWER_UPDATE", "UNIT_POWER_FREQUENT", "UNIT_MAXPOWER",
         "UNIT_DISPLAYPOWER", "UNIT_NAME_UPDATE", "UNIT_CLASSIFICATION_CHANGED", "UNIT_LEVEL", "UNIT_FACTION", "UNIT_FLAGS", "UNIT_CONNECTION",
         "UNIT_PORTRAIT_UPDATE", "UNIT_MODEL_CHANGED", "PLAYER_EQUIPMENT_CHANGED", "GROUP_ROSTER_UPDATE", "PLAYER_LEVEL_UP",
         "UNIT_GUILD_UPDATE", "GUILD_ROSTER_UPDATE",
@@ -1006,6 +1007,14 @@ function U:Initialize()
             U:RefreshUnit("player", true); return
         end
         if RP.IsSecret(unit) or type(unit) ~= "string" then return end
+        if event == "UNIT_HEAL_PREDICTION" then
+            for _, entry in pairs(U.frames) do
+                if entry.enabled and entry.plate:IsShown() then
+                    RP.Plates:UpdateHealPreview(entry.plate.healPreview, entry.unit)
+                end
+            end
+            return
+        end
         if unit == "targettarget" or (event == "UNIT_TARGET" and unit == "target") then
             U:RefreshTargetTarget(); return
         end

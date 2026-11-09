@@ -432,6 +432,50 @@ function P:RefreshTargetingEyes(checkDistance)
     end
 end
 
+function P:BuildHealPreview(health)
+    if type(CreateUnitHealPredictionCalculator) ~= "function" or type(UnitGetDetailedHealPrediction) ~= "function" then return end
+
+    local clip = CreateFrame("Frame", nil, health)
+    clip:SetAllPoints(health)
+    clip:SetFrameLevel(health:GetFrameLevel() + 2)
+    clip:SetClipsChildren(true)
+    clip:EnableMouse(false)
+
+    local fill = health:GetStatusBarTexture()
+    local bar = CreateFrame("StatusBar", nil, clip)
+    bar:SetFrameLevel(clip:GetFrameLevel())
+    bar:SetPoint("TOPLEFT", fill, "TOPRIGHT")
+    bar:SetPoint("BOTTOMLEFT", fill, "BOTTOMRIGHT")
+    bar:SetWidth(health:GetWidth())
+    bar:SetStatusBarTexture(WHITE)
+    bar:SetStatusBarColor(0.39, 1, 0.59, 0.83)
+    bar:SetMinMaxValues(0, 1)
+    bar:SetValue(0)
+    bar:EnableMouse(false)
+    health:HookScript("OnSizeChanged", function(_, width) bar:SetWidth(width) end)
+    return bar
+end
+
+local function DisplayHealPreview(bar, unit)
+    UnitGetDetailedHealPrediction(unit, "player", P.healCalculator)
+    local _, myHeal = P.healCalculator:GetIncomingHeals()
+    -- The UI engine scales the predicted amount and clips it at full health.
+    -- These values can be secret and must go directly into native widgets.
+    bar:SetMinMaxValues(0, P.healCalculator:GetMaximumHealth())
+    bar:SetValue(myHeal)
+end
+
+function P:UpdateHealPreview(bar, unit)
+    if not bar then return end
+    if unit and not self.healCalculator then
+        local ok, calculator = pcall(CreateUnitHealPredictionCalculator)
+        if ok then self.healCalculator = calculator end
+    end
+    if not unit or not self.healCalculator or not pcall(DisplayHealPreview, bar, unit) then
+        bar:SetValue(0)
+    end
+end
+
 function P:Build(parent, preview, style)
     local p = CreateFrame("Frame", nil, parent)
     p.preview = preview
@@ -450,6 +494,7 @@ function P:Build(parent, preview, style)
     p.health:EnableMouse(false)
     p.healthBg = Texture(p.health, "BACKGROUND", {0.09, 0.10, 0.14, 1})
     p.healthBg:SetAllPoints()
+    if not preview then p.healPreview = self:BuildHealPreview(p.health) end
     p.clip = CreateFrame("Frame", nil, p.health)
     p.clip:SetFrameLevel(p.health:GetFrameLevel() + 1)
     -- Let the UI engine crop the bubbles to the fill. No secret health arithmetic.
@@ -681,6 +726,7 @@ function P:UpdateHealth(p)
     p.health:SetMinMaxValues(0, maximum)
     local interpolation = Enum and Enum.StatusBarInterpolation and Enum.StatusBarInterpolation.ExponentialEaseOut
     p.health:SetValue(current, interpolation)
+    self:UpdateHealPreview(p.healPreview, p.unit)
     if RP.db.healthText == "value" then p.healthText:SetFormattedText("%d / %d", current, maximum)
     elseif RP.db.healthText == "percent" then PercentText(p.healthText, p.unit, false, current, maximum)
     else p.healthText:SetText("") end
@@ -1112,6 +1158,7 @@ function P:Detach(unit)
     if RP.LootButton then RP.LootButton:Detach(p) end
     self:RestoreOriginal(p)
     self:StopBubbles(p)
+    self:UpdateHealPreview(p.healPreview)
     if RP.Auras then RP.Auras:Detach(p) end
     p:Hide()
     p.quest:Hide(); p.cast:Hide(); p.power:Hide(); p.power.text:SetText(""); p.power:SetAlpha(1)
@@ -1221,7 +1268,7 @@ function P:Initialize()
     local events = {
         "NAME_PLATE_UNIT_ADDED", "NAME_PLATE_UNIT_REMOVED", "PLAYER_ENTERING_WORLD",
         "PLAYER_TARGET_CHANGED", "GROUP_ROSTER_UPDATE", "GUILD_ROSTER_UPDATE", "RAID_TARGET_UPDATE", "PLAYER_LEVEL_UP", "UNIT_TARGET",
-        "UNIT_HEALTH", "UNIT_MAXHEALTH", "UNIT_POWER_UPDATE", "UNIT_POWER_FREQUENT",
+        "UNIT_HEALTH", "UNIT_MAXHEALTH", "UNIT_HEAL_PREDICTION", "UNIT_POWER_UPDATE", "UNIT_POWER_FREQUENT",
         "UNIT_MAXPOWER", "UNIT_DISPLAYPOWER", "UNIT_NAME_UPDATE", "UNIT_GUILD_UPDATE", "UNIT_LEVEL", "UNIT_FACTION", "UNIT_FLAGS",
         "UNIT_SPELLCAST_START", "UNIT_SPELLCAST_STOP", "UNIT_SPELLCAST_FAILED", "UNIT_SPELLCAST_INTERRUPTED",
         "UNIT_SPELLCAST_DELAYED", "UNIT_SPELLCAST_CHANNEL_START", "UNIT_SPELLCAST_CHANNEL_STOP",
@@ -1251,12 +1298,13 @@ function P:Initialize()
         end
         if not SafeUnit(unit) then return end
         local p = P.active[unit]
-        if event:find("UNIT_SPELLCAST", 1, true) then
-            if not p then
-                local ok, base = pcall(C_NamePlate and C_NamePlate.GetNamePlateForUnit, unit)
-                local alias = ok and RP.Readable(base) and base and P.frames[base]
-                if alias and alias.unit and P.active[alias.unit] == alias then p = alias end
-            end
+        local spellcast = event:find("UNIT_SPELLCAST", 1, true)
+        if not p and (spellcast or event == "UNIT_HEAL_PREDICTION") then
+            local ok, base = pcall(C_NamePlate and C_NamePlate.GetNamePlateForUnit, unit)
+            local alias = ok and RP.Readable(base) and base and P.frames[base]
+            if alias and alias.unit and P.active[alias.unit] == alias then p = alias end
+        end
+        if spellcast then
             if not p then return end
             local endIndex = castEnd[event]
             if endIndex then
@@ -1277,6 +1325,7 @@ function P:Initialize()
         if event == "UNIT_FACTION" or event == "UNIT_FLAGS" or event == "UNIT_LEVEL" then P:Refresh(p); return end
         if not p.visible then return end
         if event == "UNIT_HEALTH" or event == "UNIT_MAXHEALTH" then P:UpdateHealth(p)
+        elseif event == "UNIT_HEAL_PREDICTION" then P:UpdateHealPreview(p.healPreview, p.unit)
         elseif event == "UNIT_NAME_UPDATE" or event == "UNIT_GUILD_UPDATE" then
             P:UpdateIdentity(p)
             if RP.LootButton then RP.LootButton:Refresh(p) end
