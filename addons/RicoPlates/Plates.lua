@@ -766,11 +766,12 @@ function P:SetColor(p, kind)
 end
 
 local healthSuffixes = {"K", "M", "B", "T", "Qa", "Qi"}
+local healthAbbreviationMinimum = 10000
 local healthBreakpoints = {}
 for index = #healthSuffixes, 1, -1 do
     local scale = 1000 ^ index
     healthBreakpoints[#healthBreakpoints + 1] = {
-        breakpoint = scale, abbreviation = healthSuffixes[index], abbreviationIsGlobal = false,
+        breakpoint = math.max(scale, healthAbbreviationMinimum), abbreviation = healthSuffixes[index], abbreviationIsGlobal = false,
         significandDivisor = scale / 10, fractionDivisor = 10,
     }
 end
@@ -781,12 +782,12 @@ function P:FormatHealthNumber(value)
         -- Only the client may format restricted values. The resulting text
         -- can still be secret and goes directly into the FontString.
         local ok, formatted = pcall(AbbreviateNumbers, value, healthAbbreviation)
-        if not ok then formatted = AbbreviateNumbers(value) end
+        if not ok then return BreakUpLargeNumbers(value) end
         if RP.IsSecret(formatted) then return formatted end
         formatted = formatted:gsub("[.,]0+(%a+)$", "%1")
         return (formatted:gsub("%.(%d+%a+)$", ",%1"))
     end
-    if value < 1000 then return ("%d"):format(value) end
+    if value < healthAbbreviationMinimum then return ("%d"):format(value) end
     local tier = 1
     while value >= 1000000 and tier < #healthSuffixes do
         value = value / 1000
