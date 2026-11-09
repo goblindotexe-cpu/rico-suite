@@ -1,6 +1,6 @@
 local addonName, RP = ...
 _G.RicoPlates = RP
-RP.name, RP.version = addonName, "1.21.1"
+RP.name, RP.version = addonName, "1.22.0"
 RP.media = "Interface\\AddOns\\" .. addonName .. "\\Media\\"
 RP.defaults = {
     enabled = true, showFriendlyNPCs = false,
@@ -20,6 +20,7 @@ RP.defaults = {
     showClassResources = true, showTargetOfTarget = true,
     partyFrames = true, partyFrameScale = 0.8, partyFrameWidth = 200, partyFrameHeight = 20,
     partyLowHealth = true, partyLowHealthThreshold = 25, partyDispels = true,
+    healerRange = true, healerHots = true, healerAbsorbs = true, healerOverheal = true, enemyRange = true,
     squareMinimap = true, minimapClock = true, minimapOverview = true,
     layoutGridSnap = true, layoutFrameSnap = true, layoutGridSize = 8, layoutSnapDistance = 12,
     unitFrameWidth = 230, unitFrameHeight = 24, unitFrameScale = 1,
@@ -134,8 +135,7 @@ end
 
 function RP:ValidateSettings()
     local d = self.db
-    -- Ordinary friendly players are target-only. Retire both old switches so
-    -- an existing saved 'show all' preference cannot override this behavior.
+    -- Ordinary friendly players have a full bar only while targeted.
     d.showFriendlyPlayers, d.showFriendlyTarget = nil, nil
     d.width = Clamp(d.width, 140, 280)
     d.height = Clamp(d.height, 14, 28)
@@ -237,8 +237,7 @@ function RP:ApplyVisibility()
     end
     -- Forever has separate player/NPC filters. The old master switch alone
     -- does not guarantee the client will create friendly-player nameplates.
-    -- Keep player plates available; our own filter shows the selected friend
-    -- plus enabled party/raid members, without changing CVars on each target.
+    -- Keep player anchors available for names even without a full health bar.
     if GetCVarValue("nameplateShowFriendlyPlayers") ~= nil then
         self:SetOwnedCVar("nameplateShowFriendlyPlayers", "1")
     else
@@ -265,6 +264,8 @@ function RP:ApplySettings()
     if self.Plates then self.Plates:RefreshAll() end
     if self.UnitFrames then self.UnitFrames:ApplySettings() end
     if self.PartyFrames then self.PartyFrames:UpdateSettings() end
+    if self.HealerHots then self.HealerHots:RefreshAll() end
+    if self.EnemyRange then self.EnemyRange:Refresh() end
     if self.PartyWarnings then self.PartyWarnings:UpdateSettings() end
     if self.Dispels then self.Dispels:UpdateSettings() end
     if self.Aggro then self.Aggro:UpdateSettings() end
@@ -403,6 +404,7 @@ function RP:Initialize()
         return
     end
     if self.Auras then self.Auras:Initialize() end
+    if self.EnemyRange then self.EnemyRange:Initialize() end
     if self.QuestieIcons then self.QuestieIcons:Initialize() end
     if self.LootButton then self.LootButton:Initialize() end
     self.Plates:Initialize()

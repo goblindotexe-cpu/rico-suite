@@ -36,6 +36,52 @@ local function CurrentUnit(frame)
 end
 local function Exists(unit) local ok,value=Call(UnitExists,unit); return ok and RP.PublicTrue(value) end
 
+local function ClearRange(state)
+    if state.range then state.range:Hide() end
+end
+
+local function RangeAlpha(region,value,whenTrue,whenFalse)
+    if not Public(value) then return Call(Field(region,"SetAlphaFromBoolean"),region,value,whenTrue,whenFalse) end
+    region:SetAlpha(value and whenTrue or whenFalse)
+    return true
+end
+
+local function UpdateRange(state,health,unit)
+    if not Enabled() or RP.db.healerRange==false or not state.active or not unit or unit=="player"
+        or Read(state.native,"IsVisible")~=true then ClearRange(state); return end
+    local ok,inRange,checked=Call(UnitInRange,unit)
+    if not ok or (Public(checked) and checked~=true) or (Public(inRange) and inRange~=false) then
+        ClearRange(state); return
+    end
+    local fill=Read(health,"GetStatusBarTexture")
+    if not Object(fill) then ClearRange(state); return end
+    if not state.range then
+        local frame=CreateFrame("Frame",nil,health)
+        frame:EnableMouse(false); frame:SetFrameLevel(health:GetFrameLevel()+2)
+        local shade=frame:CreateTexture(nil,"OVERLAY")
+        shade:SetAllPoints(frame); shade:SetColorTexture(.01,.018,.025,.40)
+        state.range,state.rangeShade=frame,shade
+    end
+    if state.rangeFill~=fill then
+        state.range:ClearAllPoints(); state.range:SetAllPoints(fill)
+        state.rangeFill=fill
+    end
+    -- The two alpha layers combine a valid range check with an out-of-range
+    -- result inside the UI engine. Health text and names sit above the shade.
+    if RangeAlpha(state.range,checked,1,0) and RangeAlpha(state.rangeShade,inRange,0,1) then
+        state.range:Show()
+    else ClearRange(state) end
+end
+
+function P:RefreshRange()
+    for _,state in pairs(self.entries) do
+        UpdateRange(state,state.entry.plate.health,CurrentUnit(state.native))
+    end
+    for _,state in pairs(self.compact) do
+        UpdateRange(state,state.health,CurrentUnit(state.native))
+    end
+end
+
 function P:Error(message)
     self.errors=self.errors+1
     self.lastError=Public(message) and type(message)=="string" and message:sub(1,180) or "Party appearance could not be applied."
@@ -211,6 +257,7 @@ function P:BuildStandard(frame)
 end
 
 function P:ClearStandard(state)
+    ClearRange(state)
     if state.entry then state.entry.enabled=false; RP.UnitFrames:ClearVisuals(state.entry) end
     if state.visual then state.visual:Hide() end
 end
@@ -231,6 +278,7 @@ function P:RefreshStandard(state,portrait)
     RP.UnitFrames:RefreshVisual(state.entry,portrait or changed)
     -- Forced Edit Mode previews can use player; this is still a party slot.
     RP.Plates:SetColor(state.entry.plate,"party")
+    UpdateRange(state,state.entry.plate.health,unit)
 end
 
 function P:ApplyStandard(state)
@@ -357,6 +405,7 @@ function P:BuildCompact(frame)
     local front=CreateFrame("Frame",nil,health); front:EnableMouse(false); front:SetAllPoints(health)
     front:SetFrameLevel(health:GetFrameLevel()+3); state.front=front
     state.trim=RP.Plates:CreateIronTrim(front)
+    if RP.Plates.BuildHealPreview then state.healPreview=RP.Plates:BuildHealPreview(health,true) end
     clip:Hide(); front:Hide()
     if type(hooksecurefunc)=="function" then
         pcall(hooksecurefunc,health,"SetStatusBarColor",function(bar,r,g,b,a)
@@ -396,10 +445,14 @@ end
 
 function P:HideCompact(state)
     state.liquid:Stop(); state.clip:Hide(); state.front:Hide()
+    ClearRange(state)
+    if state.healPreview then RP.Plates:UpdateHealPreview(state.healPreview) end
+    if RP.HealerHots then RP.HealerHots:Hide(state) end
 end
 
 function P:ApplyCompact(state)
-    if not CurrentUnit(state.native) or IsRaid() then self:ReleaseCompact(state); return end
+    local unit=CurrentUnit(state.native)
+    if not unit or IsRaid() then self:ReleaseCompact(state); return end
     if state.parentRestorePending and not Combat() then self:ReleaseCompact(state) end
     if not state.active then
         state.texture=BarTexture(state.health)
@@ -432,6 +485,9 @@ function P:ApplyCompact(state)
     if state.native:IsVisible() then
         state.clip:Show(); state.front:Show()
         if RP.db.bubbles then state.liquid:Start() else state.liquid:Stop() end
+        UpdateRange(state,state.health,unit)
+        if state.healPreview then RP.Plates:UpdateHealPreview(state.healPreview,Field(state.native,"displayedUnit") or unit) end
+        if RP.HealerHots then RP.HealerHots:Attach(state,unit,state.front,state.health,"compact") end
     else self:HideCompact(state) end
 end
 
@@ -467,7 +523,7 @@ end
 function P:UpdateSettings()
     self:Initialize()
     if self.applying then return end
-    if Combat() then self.pending=true; return end
+    if Combat() then self.pending=true; self:RefreshRange(); return end
     self.pending=false; self.applying=true
     if not Enabled() then
         for _,state in pairs(self.entries) do self:ReleaseStandard(state) end
@@ -555,13 +611,16 @@ end
 function P:RefreshOptionsPreview(preview)
     if not preview then return end
     for index,entry in ipairs(preview.entries or {}) do
+        local healing=index==1 and RP.Options and RP.Options.selectedPage==8
         RP.UnitFrames:LayoutVisual(entry)
         entry.previewHost:SetSize(entry.width,entry.height)
         entry.previewHost:SetScale(math.min(RP.db.partyFrameScale or 0.8,0.95))
         entry.previewHost:ClearAllPoints()
         entry.previewHost:SetPoint("TOPLEFT",preview.frame,"TOPLEFT",12,-85-(index-1)*160)
-        RP.Plates:UpdateDemo(entry.plate,{name=index==1 and "Party healer [Guild]" or "Party warrior [Guild]",kind="party",hp=index==1 and 1680 or 2340,
-            max=index==1 and 2200 or 3000,level=index==1 and 26 or 27,class=index==1 and "PRIEST" or "WARRIOR",power=70,powerMax=100,powerColor={0.15,0.35,1}})
+        RP.Plates:UpdateDemo(entry.plate,{name=index==1 and "Party healer [Guild]" or "Party warrior [Guild]",kind="party",
+            hp=healing and 1400 or index==1 and 1680 or 2340,max=index==1 and 2200 or 3000,
+            heal=healing and 1000 or nil,healAbsorb=healing and 120 or nil,
+            level=index==1 and 26 or 27,class=index==1 and "PRIEST" or "WARRIOR",power=70,powerMax=100,powerColor={0.15,0.35,1}})
         RP.UnitFrames:LayoutIcons(entry)
         entry.portrait:Show(); RP.Portraits:SetUnit(entry.portrait,"player",false)
     end
@@ -583,24 +642,33 @@ function P:Initialize()
     self.initialized=true
     local events=CreateFrame("Frame"); self.events=events
     for _,event in ipairs({"ADDON_LOADED","PLAYER_ENTERING_WORLD","GROUP_ROSTER_UPDATE","PLAYER_REGEN_ENABLED","PLAYER_REGEN_DISABLED",
-        "UNIT_HEALTH","UNIT_MAXHEALTH","UNIT_HEAL_PREDICTION","UNIT_POWER_UPDATE","UNIT_POWER_FREQUENT","UNIT_MAXPOWER","UNIT_DISPLAYPOWER","UNIT_NAME_UPDATE",
+        "UNIT_HEALTH","UNIT_MAXHEALTH","UNIT_HEAL_PREDICTION","UNIT_HEAL_ABSORB_AMOUNT_CHANGED","UNIT_IN_RANGE_UPDATE",
+        "UNIT_POWER_UPDATE","UNIT_POWER_FREQUENT","UNIT_MAXPOWER","UNIT_DISPLAYPOWER","UNIT_NAME_UPDATE",
         "UNIT_PORTRAIT_UPDATE","UNIT_MODEL_CHANGED","UNIT_LEVEL","UNIT_CLASSIFICATION_CHANGED","UNIT_CONNECTION","UNIT_FLAGS","UNIT_FACTION",
         "UNIT_ENTERED_VEHICLE","UNIT_EXITED_VEHICLE","UNIT_GUILD_UPDATE","GUILD_ROSTER_UPDATE","PARTY_LEADER_CHANGED","ROLE_CHANGED_INFORM",
         "UNIT_SPELLCAST_START","UNIT_SPELLCAST_STOP","UNIT_SPELLCAST_FAILED","UNIT_SPELLCAST_INTERRUPTED","UNIT_SPELLCAST_DELAYED",
         "UNIT_SPELLCAST_CHANNEL_START","UNIT_SPELLCAST_CHANNEL_STOP","UNIT_SPELLCAST_CHANNEL_UPDATE"}) do pcall(events.RegisterEvent,events,event) end
     events:SetScript("OnEvent",function(_,event,unit)
+        if event=="UNIT_IN_RANGE_UPDATE" then P:RefreshRange(); return end
         if event=="PLAYER_REGEN_ENABLED" or event=="GROUP_ROSTER_UPDATE" or event=="PLAYER_ENTERING_WORLD" or event=="ADDON_LOADED" then
             P:QueueApply()
         end
         if event:sub(1,5)=="UNIT_" then
             if not Public(unit) or type(unit)~="string" then return end
-            if event=="UNIT_HEAL_PREDICTION" then
+            if event=="UNIT_HEAL_PREDICTION" or event=="UNIT_HEAL_ABSORB_AMOUNT_CHANGED" then
                 for _,state in pairs(P.entries) do
                     if state.active and state.entry.plate:IsShown() then
                         RP.Plates:UpdateHealPreview(state.entry.plate.healPreview,state.entry.unit)
                     end
                 end
                 -- Compact frames keep Blizzard's native incoming-heal layers.
+                -- This preview contains only the separate own-overheal marker.
+                for _,state in pairs(P.compact) do
+                    if state.active and state.healPreview and Read(state.native,"IsVisible")==true then
+                        local displayed=Field(state.native,"displayedUnit") or CurrentUnit(state.native)
+                        RP.Plates:UpdateHealPreview(state.healPreview,displayed)
+                    end
+                end
                 return
             end
             local portrait=event=="UNIT_PORTRAIT_UPDATE" or event=="UNIT_MODEL_CHANGED" or event=="UNIT_NAME_UPDATE"

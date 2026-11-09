@@ -432,47 +432,104 @@ function P:RefreshTargetingEyes(checkDistance)
     end
 end
 
-function P:BuildHealPreview(health)
-    if type(CreateUnitHealPredictionCalculator) ~= "function" or type(UnitGetDetailedHealPrediction) ~= "function" then return end
-
+local function HealLayer(health)
     local clip = CreateFrame("Frame", nil, health)
-    clip:SetAllPoints(health)
     clip:SetFrameLevel(health:GetFrameLevel() + 2)
     clip:SetClipsChildren(true)
     clip:EnableMouse(false)
+    return clip
+end
 
-    local fill = health:GetStatusBarTexture()
+local function HealMeter(clip, color)
     local bar = CreateFrame("StatusBar", nil, clip)
     bar:SetFrameLevel(clip:GetFrameLevel())
-    bar:SetPoint("TOPLEFT", fill, "TOPRIGHT")
-    bar:SetPoint("BOTTOMLEFT", fill, "BOTTOMRIGHT")
-    bar:SetWidth(health:GetWidth())
     bar:SetStatusBarTexture(WHITE)
-    bar:SetStatusBarColor(0.39, 1, 0.59, 0.83)
+    bar:SetStatusBarColor(unpack(color))
     bar:SetMinMaxValues(0, 1)
     bar:SetValue(0)
     bar:EnableMouse(false)
-    health:HookScript("OnSizeChanged", function(_, width) bar:SetWidth(width) end)
     return bar
 end
 
-local function DisplayHealPreview(bar, unit)
-    UnitGetDetailedHealPrediction(unit, "player", P.healCalculator)
-    local _, myHeal = P.healCalculator:GetIncomingHeals()
-    -- The UI engine scales the predicted amount and clips it at full health.
-    -- These values can be secret and must go directly into native widgets.
-    bar:SetMinMaxValues(0, P.healCalculator:GetMaximumHealth())
-    bar:SetValue(myHeal)
+function P:BuildHealPreview(health, nativePrediction, demo)
+    if not demo and (type(CreateUnitHealPredictionCalculator) ~= "function" or type(UnitGetDetailedHealPrediction) ~= "function") then return end
+
+    local fill = health:GetStatusBarTexture()
+    local absorbClip = HealLayer(health)
+    absorbClip:SetPoint("TOPLEFT", health, "BOTTOMLEFT", 0, 3)
+    absorbClip:SetPoint("BOTTOMRIGHT", health, "BOTTOMRIGHT")
+    local absorb = HealMeter(absorbClip, {0.73, 0.38, 1, 0.95})
+    absorb:SetReverseFill(true)
+    absorb:SetPoint("TOPRIGHT", fill, "TOPRIGHT")
+    absorb:SetPoint("BOTTOMRIGHT", fill, "BOTTOMRIGHT")
+
+    -- Start the preview one heal-absorb width before the current HP edge.
+    -- Clipping hides that part of the cast and leaves only HP it can restore.
+    local start = absorb:GetStatusBarTexture()
+    local heal
+    if not nativePrediction then
+        local missing = HealLayer(health)
+        missing:SetPoint("TOPLEFT", fill, "TOPRIGHT")
+        missing:SetPoint("BOTTOMRIGHT", health, "BOTTOMRIGHT")
+        heal = HealMeter(missing, {0.39, 1, 0.59, 0.83})
+    end
+    -- Only the portion of this player's cast beyond full HP reaches the gold cap.
+    local overflow = HealLayer(health)
+    overflow:SetFrameLevel(health:GetFrameLevel() + 4)
+    overflow:SetPoint("TOPLEFT", health, "TOPRIGHT", 0, -1)
+    overflow:SetPoint("BOTTOMRIGHT", health, "BOTTOMRIGHT", 3, 1)
+    local overheal = HealMeter(overflow, {1, 0.72, 0.19, 1})
+    local meters = heal and {absorb, heal, overheal} or {absorb, overheal}
+    for index = 2, #meters do
+        meters[index]:SetPoint("TOPLEFT", start, "TOPLEFT")
+        meters[index]:SetPoint("BOTTOMLEFT", start, "BOTTOMLEFT")
+    end
+    local function SetWidth(_, width)
+        for _, meter in ipairs(meters) do meter:SetWidth(width) end
+    end
+    SetWidth(health, health:GetWidth())
+    health:HookScript("OnSizeChanged", SetWidth)
+
+    local preview = heal or overheal
+    preview.healAbsorb, preview.heal, preview.overheal = absorb, heal, overheal
+    return preview
 end
 
-function P:UpdateHealPreview(bar, unit)
-    if not bar then return end
-    if unit and not self.healCalculator then
+local function DisplayHealAmounts(preview, maximum, myHeal, absorb)
+    local absorbBar = preview.healAbsorb
+    absorbBar:SetMinMaxValues(0, maximum)
+    absorbBar:SetValue(absorb)
+    absorbBar:SetAlpha(RP.db.healerAbsorbs ~= false and 1 or 0)
+    if preview.heal then
+        preview.heal:SetMinMaxValues(0, maximum)
+        preview.heal:SetValue(myHeal)
+    end
+    preview.overheal:SetMinMaxValues(0, maximum)
+    preview.overheal:SetValue(myHeal)
+    preview.overheal:SetAlpha(RP.db.healerOverheal ~= false and 1 or 0)
+end
+
+local function DisplayHealPreview(preview, unit, calculator)
+    if type(calculator.ResetPredictedValues) == "function" then calculator:ResetPredictedValues() end
+    UnitGetDetailedHealPrediction(unit, "player", calculator)
+    local maximum = calculator:GetMaximumHealth()
+    if type(calculator.GetTotalIncomingHealsFromHealer) == "function" and type(calculator.GetTotalHealAbsorbs) == "function" then
+        -- The native bars do the geometry using raw values, even if they are secret.
+        DisplayHealAmounts(preview, maximum, calculator:GetTotalIncomingHealsFromHealer(), calculator:GetTotalHealAbsorbs())
+    else
+        local _, myHeal = calculator:GetIncomingHeals()
+        DisplayHealAmounts(preview, maximum, myHeal, 0)
+    end
+end
+
+function P:UpdateHealPreview(preview, unit)
+    if not preview then return end
+    if SafeUnit(unit) and not self.healCalculator then
         local ok, calculator = pcall(CreateUnitHealPredictionCalculator)
         if ok then self.healCalculator = calculator end
     end
-    if not unit or not self.healCalculator or not pcall(DisplayHealPreview, bar, unit) then
-        bar:SetValue(0)
+    if not SafeUnit(unit) or not self.healCalculator or not pcall(DisplayHealPreview, preview, unit, self.healCalculator) then
+        DisplayHealAmounts(preview, 1, 0, 0)
     end
 end
 
@@ -518,7 +575,16 @@ function P:Build(parent, preview, style)
     p.front:EnableMouse(false)
     p.iron = IronTrim(p.front)
     p.outline = p.iron.outer
-    p.name = Font(p.front, 12, "CENTER")
+    if not preview and not p.unitFrame then
+        -- World player names have their own layer so the HP bar can hide.
+        p.nameLayer = CreateFrame("Frame", nil, parent)
+        p.nameLayer:SetSize(1, 1)
+        p.nameLayer:SetPoint("CENTER", p, "CENTER")
+        p.nameLayer:SetFrameLevel(p.front:GetFrameLevel())
+        p.nameLayer:EnableMouse(false)
+        p.nameLayer:Hide()
+    end
+    p.name = Font(p.nameLayer or p.front, 12, "CENTER")
     p.name:SetPoint("BOTTOM", p, "TOP", 0, 5)
     p.name:SetWordWrap(false)
     p.healthText = Font(p.front, 11)
@@ -606,6 +672,7 @@ function P:Layout(p)
         + (d.showDebuffs and (d.debuffSize + 4) or 0)
         + (d.showBuffs and (d.buffSize + 4) or 0)
     p:SetScale(p.unitFrame and 1 or (p.preview and math.min(d.scale, 1.05, 220 / width, 70 / previewHeight) or d.scale))
+    if p.nameLayer then p.nameLayer:SetScale(p:GetScale()) end
     p.name:SetFont(FONT, fontSize + 1, "OUTLINE")
     p.healthText:SetFont(FONT, fontSize, "OUTLINE")
     p.level:SetFont(FONT, math.max(10, fontSize), "OUTLINE")
@@ -851,9 +918,13 @@ function P:PaintFactionIcon(p, faction)
     icon:Show()
 end
 
-function P:UpdateIdentity(p)
+function P:UpdateName(p)
     local name = RP:DisplayName(p.unit)
     if RP.IsSecret(name) then p.name:SetText(name) else p.name:SetText(name or "…") end
+end
+
+function P:UpdateIdentity(p)
+    self:UpdateName(p)
     if RP.db.showLevel then
         local level = UnitLevel(p.unit)
         if RP.Readable(level) and (not level or level <= 0) then p.level:SetText("??")
@@ -1055,6 +1126,8 @@ end
 function P:Refresh(p)
     if not RP.db.enabled or not Exists(p.unit) or IsObject(p.unit) then
         p.visible = false
+        if p.nameLayer then p.nameLayer:Hide() end
+        if RP.EnemyRange then RP.EnemyRange:Reset(p) end
         if p.targetingEye then p.targetingEye:Hide() end
         HideCastWarning(p)
         self:PaintQuest(p, nil)
@@ -1067,10 +1140,13 @@ function P:Refresh(p)
     p.visible, p.isPlayer, p.baseKind = visible, player, baseKind or kind
     self:Layout(p)
     self:SetColor(p, kind)
+    if p.nameLayer then p.nameLayer:SetShown(visible or player) end
+    if RP.EnemyRange then RP.EnemyRange:Update(p) end
     if self.targetEyeTicker then self.targetEyeTicker:Show() end
     local questInfo
     if RP.Quest and RP.db.questMarkers and not player then questInfo = RP.Quest:GetUnitInfo(p.unit) end
     if not visible then
+        if player then self:UpdateName(p) end
         p:Hide()
         self:PaintQuest(p, questInfo)
         self:UpdateTargetingEye(p)
@@ -1149,6 +1225,8 @@ function P:Detach(unit)
     local p = self.active[unit]
     if not p then return end
     self.active[unit] = nil
+    if p.nameLayer then p.nameLayer:Hide() end
+    if RP.EnemyRange then RP.EnemyRange:Reset(p) end
     if self.targetEyeTicker and not next(self.active) then self.targetEyeTicker:Hide() end
     if p.targetingEye then p.targetingEye:Hide() end
     HideCastWarning(p)
@@ -1194,6 +1272,12 @@ function P:UpdateDemo(p, data)
     self:SetColor(p, kind)
     p.health:SetMinMaxValues(0, data.max)
     p.health:SetValue(data.hp)
+    if data.heal or data.healAbsorb then
+        p.healPreview = p.healPreview or self:BuildHealPreview(p.health, false, true)
+        DisplayHealAmounts(p.healPreview, data.max, data.heal or 0, data.healAbsorb or 0)
+    else
+        self:UpdateHealPreview(p.healPreview)
+    end
     if RP.db.healthText == "value" then p.healthText:SetFormattedText("%d / %d", data.hp, data.max)
     elseif RP.db.healthText == "percent" then p.healthText:SetFormattedText("%.0f%%", data.hp / data.max * 100)
     else p.healthText:SetText("") end
@@ -1268,7 +1352,7 @@ function P:Initialize()
     local events = {
         "NAME_PLATE_UNIT_ADDED", "NAME_PLATE_UNIT_REMOVED", "PLAYER_ENTERING_WORLD",
         "PLAYER_TARGET_CHANGED", "GROUP_ROSTER_UPDATE", "GUILD_ROSTER_UPDATE", "RAID_TARGET_UPDATE", "PLAYER_LEVEL_UP", "UNIT_TARGET",
-        "UNIT_HEALTH", "UNIT_MAXHEALTH", "UNIT_HEAL_PREDICTION", "UNIT_POWER_UPDATE", "UNIT_POWER_FREQUENT",
+        "UNIT_HEALTH", "UNIT_MAXHEALTH", "UNIT_HEAL_PREDICTION", "UNIT_HEAL_ABSORB_AMOUNT_CHANGED", "UNIT_POWER_UPDATE", "UNIT_POWER_FREQUENT",
         "UNIT_MAXPOWER", "UNIT_DISPLAYPOWER", "UNIT_NAME_UPDATE", "UNIT_GUILD_UPDATE", "UNIT_LEVEL", "UNIT_FACTION", "UNIT_FLAGS",
         "UNIT_SPELLCAST_START", "UNIT_SPELLCAST_STOP", "UNIT_SPELLCAST_FAILED", "UNIT_SPELLCAST_INTERRUPTED",
         "UNIT_SPELLCAST_DELAYED", "UNIT_SPELLCAST_CHANNEL_START", "UNIT_SPELLCAST_CHANNEL_STOP",
@@ -1299,7 +1383,8 @@ function P:Initialize()
         if not SafeUnit(unit) then return end
         local p = P.active[unit]
         local spellcast = event:find("UNIT_SPELLCAST", 1, true)
-        if not p and (spellcast or event == "UNIT_HEAL_PREDICTION") then
+        local healing = event == "UNIT_HEAL_PREDICTION" or event == "UNIT_HEAL_ABSORB_AMOUNT_CHANGED"
+        if not p and (spellcast or healing) then
             local ok, base = pcall(C_NamePlate and C_NamePlate.GetNamePlateForUnit, unit)
             local alias = ok and RP.Readable(base) and base and P.frames[base]
             if alias and alias.unit and P.active[alias.unit] == alias then p = alias end
@@ -1323,9 +1408,12 @@ function P:Initialize()
         end
         if not p then return end
         if event == "UNIT_FACTION" or event == "UNIT_FLAGS" or event == "UNIT_LEVEL" then P:Refresh(p); return end
-        if not p.visible then return end
+        if not p.visible then
+            if p.isPlayer and (event == "UNIT_NAME_UPDATE" or event == "UNIT_GUILD_UPDATE") then P:UpdateName(p) end
+            return
+        end
         if event == "UNIT_HEALTH" or event == "UNIT_MAXHEALTH" then P:UpdateHealth(p)
-        elseif event == "UNIT_HEAL_PREDICTION" then P:UpdateHealPreview(p.healPreview, p.unit)
+        elseif healing then P:UpdateHealPreview(p.healPreview, p.unit)
         elseif event == "UNIT_NAME_UPDATE" or event == "UNIT_GUILD_UPDATE" then
             P:UpdateIdentity(p)
             if RP.LootButton then RP.LootButton:Refresh(p) end

@@ -130,6 +130,10 @@ function O:RefreshState()
         self.partyStatus:SetText(type(status) == "table" and status.message or "Party styling is ready when group frames are available.")
     end
     if self.minimapStatus and RP.Minimap then self.minimapStatus:SetText(RP.Minimap:GetStatus()) end
+    if self.enemyRangeSpell then
+        local spell = RP.EnemyRange and RP.EnemyRange.spellName
+        self.enemyRangeSpell:SetText(spell and ("Enemy range reference • " .. spell) or "Enemy range reference is unavailable.")
+    end
     if self.questSourceStatus then
         local status = RP.Quest and RP.Quest.GetStatus and RP.Quest:GetStatus()
         local message = "Questie not loaded; built-in quest detection is active."
@@ -165,7 +169,7 @@ function O:RefreshPreview()
     if not self.frame then return end
     local shown = self.frame:IsShown()
     local unitPage = self.selectedPage == 5
-    local partyPage = self.selectedPage == 6
+    local partyPage = self.selectedPage == 6 or self.selectedPage == 8
     local mapPage = self.selectedPage == 7
     if self.nameplatePreview then self.nameplatePreview:SetShown(not unitPage and not partyPage and not mapPage) end
     if self.unitPreviewPanel then self.unitPreviewPanel:SetShown(unitPage) end
@@ -235,13 +239,13 @@ function O:Build()
     local close = Button(frame, "Close", 72, 28, function() frame:Hide() end)
     close:SetPoint("TOPRIGHT", -24, -29)
     self.pages, self.tabs = {}, {}
-    local names = {"Nameplates", "Style", "Auras", "Quests", "Unitframes", "Party", "Minimap"}
-    local widths, tabX = {79, 43, 45, 51, 72, 47, 60}, 24
+    local names = {"Nameplates", "Style", "Auras", "Quests", "Unitframes", "Party", "Minimap", "Healing"}
+    local widths, tabX = {72, 37, 41, 45, 65, 43, 53, 50}, 24
     for i, name in ipairs(names) do
         local index = i
         local tab = Button(frame, name, widths[i], 32, function() O:SelectPage(index) end)
         tab:SetPoint("TOPLEFT", tabX, -85)
-        tabX = tabX + widths[i] + 8
+        tabX = tabX + widths[i] + 4
         self.tabs[i] = tab
         local page = CreateFrame("Frame", nil, frame)
         page:SetSize(438, 440)
@@ -267,7 +271,7 @@ function O:Build()
         {"aggroIndicator", "Glow when a creature is attacking me"},
     }
     for i, row in ipairs(rows) do Checkbox(general, -(i - 1) * 25, row[1], row[2]) end
-    local note = Text(general, "Friendly players outside your group appear only when targeted. Party and raid have separate toggles; raid members remain orange.", 11, COLORS.muted)
+    local note = Text(general, "Player names stay visible. Friendly players outside your group get a full bar when targeted. Party and raid have separate toggles.", 11, COLORS.muted)
     note:SetPoint("TOPLEFT", 5, -390)
     note:SetWidth(420)
     note:SetWordWrap(true)
@@ -406,6 +410,19 @@ function O:Build()
     self.minimapStatus = Text(minimap, "", 11, COLORS.mint)
     self.minimapStatus:SetPoint("TOPLEFT", 5, -105)
     self.minimapStatus:SetWidth(420); self.minimapStatus:SetWordWrap(true)
+
+    local healing = self.pages[8]
+    Checkbox(healing, 0, "healerRange", "Dim party bars outside group range")
+    Checkbox(healing, -33, "enemyRange", "Dim enemy bars outside attack range")
+    Checkbox(healing, -66, "healerHots", "Show timers for my heals over time")
+    Checkbox(healing, -99, "healerAbsorbs", "Show healing absorbs on health bars")
+    Checkbox(healing, -132, "healerOverheal", "Mark overheal on my healing preview")
+    local healHint = Text(healing, "Mint shows the healing your cast is expected to restore. Purple shows healing absorbed by an effect. Gold marks a cast that exceeds the target's missing health.", 11, COLORS.muted)
+    healHint:SetPoint("TOPLEFT", 5, -177); healHint:SetWidth(420); healHint:SetWordWrap(true)
+    local rangeHint = Text(healing, "Party dimming uses Blizzard's group range. Enemy dimming checks a learned attack from your spellbook.", 11, COLORS.muted)
+    rangeHint:SetPoint("TOPLEFT", 5, -235); rangeHint:SetWidth(420); rangeHint:SetWordWrap(true)
+    self.enemyRangeSpell = Text(healing, "", 11, COLORS.mint)
+    self.enemyRangeSpell:SetPoint("TOPLEFT", 5, -278); self.enemyRangeSpell:SetWidth(420)
 
     local preview = CreateFrame("Frame", nil, frame)
     self.nameplatePreview = preview

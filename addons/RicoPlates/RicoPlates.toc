@@ -3,7 +3,7 @@
 ## Title: |cff59e4bfRico|rPlates
 ## Notes: Modern nameplates and player/target/pet unit frames with animated 3D portraits, liquid health and quest indicators.
 ## Author: Rico
-## Version: 1.21.1
+## Version: 1.22.0
 ## SavedVariables: RicoPlatesDB, RicoSuiteDB, RicoPlatesNavigationDB, RicoMiningDB
 ## SavedVariablesPerCharacter: RicoPlatesNavigationCharDB
 ## OptionalDeps: Questie, QuestieDB, RicoLoot, ShortestPathForever, Bagnon
@@ -25,8 +25,10 @@ MiningRoutes.lua
 MiningMap.lua
 MiningUI.lua
 Auras.lua
+HealerHots.lua
 LootButton.lua
 Plates.lua
+EnemyRange.lua
 Aggro.lua
 Features.lua
 Quest.lua

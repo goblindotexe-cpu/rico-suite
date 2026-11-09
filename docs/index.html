@@ -7,7 +7,7 @@
   <meta name="description" content="Rico Suite brings custom nameplates, a loot browser, one-key fishing, mining tools, and a unified inventory to World of Warcraft: Forever.">
   <title>Rico Suite for WoW Forever</title>
   <link rel="icon" href="rico.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="style.css?v=3">
+  <link rel="stylesheet" href="style.css?v=4">
   <script defer src="rico-liquid.js"></script>
   <script defer src="rico-cast-eye.js"></script>
   <script defer src="rico-preview.js"></script>
@@ -19,6 +19,7 @@
       <nav aria-label="Main navigation">
         <a href="#addons">Addons</a>
         <a href="#one-key-fishing">Fishing</a>
+        <a href="#changelog">Changelog</a>
         <a href="#install">Install</a>
         <a href="https://github.com/goblindotexe-cpu/rico-suite">GitHub <span aria-hidden="true">↗</span></a>
       </nav>
@@ -34,7 +35,7 @@
           <a class="button primary" href="https://github.com/goblindotexe-cpu/rico-suite/releases/latest/download/RicoSuite-forever.zip">Download for Forever <span aria-hidden="true">↓</span></a>
           <a class="button secondary" href="#install">Installation guide <span aria-hidden="true">↗</span></a>
         </div>
-        <a class="feature-link" href="#one-key-fishing">New in RicoFishing · One-Key Fishing <span aria-hidden="true">↓</span></a>
+        <a class="feature-link" href="#changelog">What's new · Healing and range <span aria-hidden="true">↓</span></a>
       </div>
       <figure class="showcase" aria-labelledby="preview-title">
         <div class="demo-window" data-rico-preview>
@@ -103,6 +104,42 @@
         <li><kbd>F</kbd><div><strong>Cast again</strong><span>Press again for the next catch.</span></div></li>
       </ol>
     </section>
+    <section id="changelog" class="section shell changelog" aria-labelledby="changelog-title">
+      <div>
+        <p class="eyebrow">Release history</p>
+        <h2 id="changelog-title">Changelog.</h2>
+        <p class="muted">See what changed in each public Rico Suite release.</p>
+        <a class="feature-link" href="https://github.com/goblindotexe-cpu/rico-suite/releases">All GitHub releases <span aria-hidden="true">↗</span></a>
+      </div>
+      <div class="release-list">
+        <details class="release" open>
+          <summary><span class="index">v1.3.0</span><strong>Healing and range</strong></summary>
+          <ul>
+            <li>Track your own healing-over-time spells with countdowns and expiring timers.</li>
+            <li>See heal absorbs in purple and predicted overheal in gold on supported HP bars.</li>
+            <li>Dim out-of-range party and enemy HP bars while keeping names readable.</li>
+            <li>Keep player names visible when their full nameplate bar is hidden.</li>
+            <li>Adjust each indicator under <code>/rp</code> → Healing.</li>
+          </ul>
+          <a class="repo-url" href="https://github.com/goblindotexe-cpu/rico-suite/releases/tag/v1.3.0">Release and download <span aria-hidden="true">↗</span></a>
+        </details>
+        <details class="release">
+          <summary><span class="index">v1.2.0</span><strong>Healing previews</strong></summary>
+          <ul><li>Preview your incoming heal as a mint-green extension on the recipient's health bar.</li></ul>
+          <a class="repo-url" href="https://github.com/goblindotexe-cpu/rico-suite/releases/tag/v1.2.0">Release and download <span aria-hidden="true">↗</span></a>
+        </details>
+        <details class="release">
+          <summary><span class="index">v1.1.0</span><strong>One-Key Fishing and minimap</strong></summary>
+          <ul><li>Cast and reel in with F, track your fishing sessions, and use the square Rico minimap.</li></ul>
+          <a class="repo-url" href="https://github.com/goblindotexe-cpu/rico-suite/releases/tag/v1.1.0">Release and download <span aria-hidden="true">↗</span></a>
+        </details>
+        <details class="release">
+          <summary><span class="index">v1.0.0</span><strong>First public release</strong></summary>
+          <ul><li>RicoPlates, RicoLoot and RicoFishing in a single download for WoW Forever.</li></ul>
+          <a class="repo-url" href="https://github.com/goblindotexe-cpu/rico-suite/releases/tag/v1.0.0">Release and download <span aria-hidden="true">↗</span></a>
+        </details>
+      </div>
+    </section>
     <section id="install" class="section install" aria-labelledby="install-title">
       <div class="shell install-grid">
         <div><p class="eyebrow">Setup</p><h2 id="install-title">Install Rico Suite.</h2><p class="muted">The release ZIP includes all three addons for World of Warcraft: Forever.</p></div>
@@ -117,6 +154,6 @@
       </div>
     </section>
   </main>
-  <footer class="shell footer"><span>Rico Suite · Community addons for WoW Forever</span><a href="https://github.com/goblindotexe-cpu/rico-suite/releases">Release notes ↗</a></footer>
+  <footer class="shell footer"><span>Rico Suite · Community addons for WoW Forever</span><a href="#changelog">Changelog ↑</a></footer>
 </body>
 </html>

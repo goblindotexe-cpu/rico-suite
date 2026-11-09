@@ -5,7 +5,7 @@ tools, mining tools, and a combined inventory to World of Warcraft: Forever.
 
 | Addon | Open in game | Includes |
 | --- | --- | --- |
-| RicoPlates | `/rp` | Nameplates, cast alerts, healing previews, party frames, square minimap, quest guidance, mining, and inventory |
+| RicoPlates | `/rp` | Nameplates, cast alerts, heal and range indicators, party frames, square minimap, quest guidance, mining, and inventory |
 | RicoLoot | `/rl` | Loot tables, local observations, and item goals |
 | RicoFishing | `/rf` | One-Key Fishing on **F**, per-character catch log, fishing guide, and goals |
 
