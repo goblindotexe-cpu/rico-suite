@@ -478,11 +478,33 @@ function P:HideCompact(state)
     if RP.HealerHots then RP.HealerHots:Hide(state) end
 end
 
+function P:UpdateCompactHealthText(state)
+    if not state or not state.active then return end
+    local frame=state.native
+    local text=Field(frame,"statusText")
+    local options=Field(frame,"optionTable")
+    if not Object(text) or Read(text,"IsShown")~=true or Field(options,"displayStatusText")~=true then return end
+    local ok,mode=Call(CompactUnitFrame_GetOptionHealthText,frame,options)
+    if not ok or not Public(mode) or (mode~="health" and mode~="losthealth") then return end
+    local member=CurrentUnit(frame)
+    local unit=Field(frame,"displayedUnit") or member
+    if not member then return end
+    local connected,isConnected=Call(UnitIsConnected,member)
+    local alive,isDead=Call(UnitIsDeadOrGhost,unit)
+    if not connected or not Public(isConnected) or isConnected~=true or not alive or not Public(isDead) or isDead~=false then return end
+    local readHealth=mode=="health" and UnitHealth or UnitHealthMissing
+    local read,value=Call(readHealth,unit)
+    if read and (RP.IsSecret(value) or Number(value)) then
+        text:SetFormattedText(mode=="health" and "%s" or "-%s",RP.Plates:FormatHealthNumber(value))
+    end
+end
+
 function P:ApplyCompact(state)
     local unit=CurrentUnit(state.native)
     if not unit or IsRaid() then self:ReleaseCompact(state); return end
     if state.parentRestorePending and not Combat() then self:ReleaseCompact(state) end
-    if not state.active then
+    local newlyStyled=not state.active
+    if newlyStyled then
         state.texture=BarTexture(state.health)
         state.powerTexture=Object(state.power) and BarTexture(state.power) or nil
         state.healthAppearance=CaptureBarAppearance(state.health) or state.healthAppearance
@@ -512,6 +534,7 @@ function P:ApplyCompact(state)
     if Number(width) and Number(height) then state.liquid.width,state.liquid.height=width,height end
     if state.native:IsVisible() then
         state.clip:Show(); state.front:Show()
+        if newlyStyled then self:UpdateCompactHealthText(state) end
         if RP.db.bubbles then state.liquid:Start() else state.liquid:Stop() end
         UpdateRange(state,state.health,unit)
         if state.healPreview then RP.Plates:UpdateHealPreview(state.healPreview,Field(state.native,"displayedUnit") or unit) end
@@ -523,6 +546,7 @@ function P:ReleaseCompact(state)
     if not state.active and not state.parentRestorePending then return end
     if state.active then
         state.active=false; self:HideCompact(state)
+        Call(CompactUnitFrame_UpdateStatusText,state.native)
         RestoreBarAppearance(state.health,state.healthAppearance)
         RestoreBarAppearance(state.power,state.powerAppearance)
         pcall(state.health.SetStatusBarColor,state.health,unpack(state.color))
@@ -669,6 +693,11 @@ function P:Initialize()
     if self.initialized then return end
     self.initialized=true
     local events=CreateFrame("Frame"); self.events=events
+    if type(hooksecurefunc)=="function" and type(CompactUnitFrame_UpdateStatusText)=="function" then
+        pcall(hooksecurefunc,_G,"CompactUnitFrame_UpdateStatusText",function(frame)
+            P:UpdateCompactHealthText(P.compact[frame])
+        end)
+    end
     for _,event in ipairs({"ADDON_LOADED","PLAYER_ENTERING_WORLD","GROUP_ROSTER_UPDATE","PLAYER_REGEN_ENABLED","PLAYER_REGEN_DISABLED",
         "UNIT_HEALTH","UNIT_MAXHEALTH","UNIT_HEAL_PREDICTION","UNIT_HEAL_ABSORB_AMOUNT_CHANGED","UNIT_IN_RANGE_UPDATE",
         "UNIT_POWER_UPDATE","UNIT_POWER_FREQUENT","UNIT_MAXPOWER","UNIT_DISPLAYPOWER","UNIT_NAME_UPDATE",

@@ -765,6 +765,46 @@ function P:SetColor(p, kind)
     if p.animating then p.liquid:Paint() end
 end
 
+local healthSuffixes = {"K", "M", "B", "T", "Qa", "Qi"}
+local healthBreakpoints = {}
+for index = #healthSuffixes, 1, -1 do
+    local scale = 1000 ^ index
+    healthBreakpoints[#healthBreakpoints + 1] = {
+        breakpoint = scale, abbreviation = healthSuffixes[index], abbreviationIsGlobal = false,
+        significandDivisor = scale / 10, fractionDivisor = 10,
+    }
+end
+local healthAbbreviation = {breakpointData = healthBreakpoints, locale = "enUS"}
+
+function P:FormatHealthNumber(value)
+    if RP.IsSecret(value) then
+        -- Only the client may format restricted values. The resulting text
+        -- can still be secret and goes directly into the FontString.
+        local ok, formatted = pcall(AbbreviateNumbers, value, healthAbbreviation)
+        if not ok then formatted = AbbreviateNumbers(value) end
+        if RP.IsSecret(formatted) then return formatted end
+        formatted = formatted:gsub("[.,]0+(%a+)$", "%1")
+        return (formatted:gsub("%.(%d+%a+)$", ",%1"))
+    end
+    if value < 1000 then return ("%d"):format(value) end
+    local tier = 1
+    while value >= 1000000 and tier < #healthSuffixes do
+        value = value / 1000
+        tier = tier + 1
+    end
+    local tenths = math.floor(value / 100 + 0.5)
+    if tenths == 10000 and tier < #healthSuffixes then
+        tier, tenths = tier + 1, 10
+    end
+    local whole, fraction = math.floor(tenths / 10), tenths % 10
+    if fraction == 0 then return ("%d%s"):format(whole, healthSuffixes[tier]) end
+    return ("%d,%d%s"):format(whole, fraction, healthSuffixes[tier])
+end
+
+function P:SetHealthValuesText(text, current, maximum)
+    text:SetFormattedText("%s / %s", self:FormatHealthNumber(current), self:FormatHealthNumber(maximum))
+end
+
 local function PercentText(fontString, unit, power, current, maximum)
     local curve = CurveConstants and CurveConstants.ScaleTo100
     if curve then
@@ -794,7 +834,7 @@ function P:UpdateHealth(p)
     local interpolation = Enum and Enum.StatusBarInterpolation and Enum.StatusBarInterpolation.ExponentialEaseOut
     p.health:SetValue(current, interpolation)
     self:UpdateHealPreview(p.healPreview, p.unit)
-    if RP.db.healthText == "value" then p.healthText:SetFormattedText("%d / %d", current, maximum)
+    if RP.db.healthText == "value" then self:SetHealthValuesText(p.healthText, current, maximum)
     elseif RP.db.healthText == "percent" then PercentText(p.healthText, p.unit, false, current, maximum)
     else p.healthText:SetText("") end
 end
@@ -1278,7 +1318,7 @@ function P:UpdateDemo(p, data)
     else
         self:UpdateHealPreview(p.healPreview)
     end
-    if RP.db.healthText == "value" then p.healthText:SetFormattedText("%d / %d", data.hp, data.max)
+    if RP.db.healthText == "value" then self:SetHealthValuesText(p.healthText, data.hp, data.max)
     elseif RP.db.healthText == "percent" then p.healthText:SetFormattedText("%.0f%%", data.hp / data.max * 100)
     else p.healthText:SetText("") end
     p.level:SetText(data.level or 25)
