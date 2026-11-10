@@ -1000,11 +1000,17 @@ function P:UpdateTarget(p)
     local selected = RP.db.targetBorder and RP.PublicTrue(UnitIsUnit(p.unit, "target"))
     self:PaintBorder(p, selected)
     local marker = GetRaidTargetIndex and GetRaidTargetIndex(p.unit)
-    if RP.Readable(marker) and type(marker) == "number" and marker >= 1 and marker <= 8 then
+    local icon = p.raidIcon
+    local shown = false
+    if RP.IsSecret(marker) then
+        -- The native texture can select a cell without Lua reading the index.
+        shown = pcall(icon.SetSpriteSheetCell, icon, marker, 4, 4)
+    elseif type(marker) == "number" and marker >= 1 and marker <= 8 then
         local col, row = (marker - 1) % 4, math.floor((marker - 1) / 4)
-        p.raidIcon:SetTexCoord(col / 4, (col + 1) / 4, row / 2, (row + 1) / 2)
-        p.raidIcon:Show()
-    else p.raidIcon:Hide() end
+        icon:SetTexCoord(col / 4, (col + 1) / 4, row / 4, (row + 1) / 4)
+        shown = true
+    end
+    icon:SetShown(shown)
     PositionTargetingEye(p)
 end
 
