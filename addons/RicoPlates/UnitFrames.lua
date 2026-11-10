@@ -488,6 +488,14 @@ function U:ShowUnitTooltip(entry)
     if not entry or not entry.enabled or not Exists(entry.unit) then self:HideUnitTooltip(entry); return end
     if not self.unitTooltip then
         local tooltip = CreateFrame("GameTooltip", "RicoPlatesUnitTooltip", UIParent, "GameTooltipTemplate")
+        local healthBar = tooltip.StatusBar
+        if healthBar then
+            -- The native watcher can fill this bar with secret HP. The
+            -- template's color script compares those values even though it
+            -- uses a fixed green color here.
+            healthBar:SetScript("OnValueChanged", nil)
+            healthBar:SetStatusBarColor(0, 1, 0)
+        end
         tooltip:SetFrameStrata("TOOLTIP")
         tooltip:SetClampedToScreen(true)
         tooltip:EnableMouse(false)
