@@ -47,7 +47,8 @@ local function Compare(from, goal, own)
 		return false
 	end
 	options.cache, options.otherFaction = cache, true
-	options.waterWalking, options.withoutHearth = ns.JourneyWaterWalking(), ns.JourneyWithoutHearth()
+	options.waterWalking = ns.JourneyWaterWalking()
+	ns.ApplyJourneyHearthPolicy(options, goal)
 	local other = ns.Planner.Plan(options)
 	local through = other and OtherFaction(other, faction)
 	if not (other and through) then

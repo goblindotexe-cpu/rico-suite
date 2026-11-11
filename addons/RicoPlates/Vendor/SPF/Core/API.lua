@@ -427,7 +427,11 @@ function API.NavigateRoute(owner, stops)
 		return false
 	end
 	local count = #stops
-	if count < 1 or count > MAX_STOPS or not ns.JourneyPosition() then
+	if count < 1 or count > MAX_STOPS then
+		return false
+	end
+	local playerX, playerY, _, playerMap = ns.JourneyPosition()
+	if not playerX then
 		return false
 	end
 	for key in pairs(stops) do
@@ -456,6 +460,7 @@ function API.NavigateRoute(owner, stops)
 		end
 		point.label = stop.title
 		point.tooltip = stop.tooltip
+		point.hearthOnlyAtGoal = owner == "RicoPlates"
 		-- A caller such as Adventure Guide may need the route to remain visible while the
 		-- player completes an interaction at this location. It resubmits the route after
 		-- that state changes; ordinary API stops retain automatic arrival.
@@ -493,6 +498,9 @@ function API.NavigateRoute(owner, stops)
 		end
 		points[index] = point
 	end
+	if owner == "RicoPlates" and Number(playerMap) and Number(playerX) and Number(playerY) then
+		points[1].ricoStart = { map = playerMap, x = playerX, y = playerY }
+	end
 	-- Validate and copy every stop before replacing guidance. Caller mutations cannot redirect a journey.
 	if route and route.owner ~= owner then
 		ended[route.owner] = { reason = "replaced", at = GetTime() }
@@ -500,7 +508,7 @@ function API.NavigateRoute(owner, stops)
 	ended[owner] = nil
 	route = { owner = owner, points = points, index = 1 }
 	ns.ItineraryChanged()
-	return ns.StartJourney(points[1])
+	return ns.StartJourney(points[1], owner == "RicoPlates")
 end
 
 function API.Navigate(owner, map, x, y, title, kind)

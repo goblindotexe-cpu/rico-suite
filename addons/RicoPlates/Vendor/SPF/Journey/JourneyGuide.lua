@@ -133,7 +133,7 @@ local function WaypointNames()
 		return nil
 	end
 	local title
-	if guide.leg then
+	if guide.leg and guide.target ~= guide.leg.from then
 		local ok, label = pcall(ns.LegLabel, guide.leg)
 		if ok then
 			title = label
@@ -486,9 +486,17 @@ function Guide.Active()
 	return guide ~= nil
 end
 
-function Guide.Start()
+function Guide.Start(replaceWaypoint)
 	ClearOrphanWaypoint()
 	local previous = C_Map.HasUserWaypoint() and C_Map.GetUserWaypoint()
+	if replaceWaypoint and previous and not WaypointUIHolding() then
+		C_Map.ClearUserWaypoint()
+		if C_SuperTrack.IsSuperTrackingUserWaypoint() then
+			C_SuperTrack.SetSuperTrackedUserWaypoint(false)
+		end
+		previous = C_Map.HasUserWaypoint() and C_Map.GetUserWaypoint()
+		RefreshWaypointPins()
+	end
 	local saved = previous
 		and UiMapPoint.CreateFromCoordinates(previous.uiMapID, previous.position.x, previous.position.y, previous.z)
 	guide = {

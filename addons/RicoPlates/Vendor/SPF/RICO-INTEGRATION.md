@@ -11,8 +11,8 @@ SHA-256: `adce5d713e4fb91cc0997aa1c1b3a06610d185434ac3afc623de3049e9a52293`
 Changes:
 
 - `RicoPathBridge.lua` exposes a small status API and filters unverified walking
-  sketches from map/minimap lines and direction guidance for **RicoPlates-owned
-  routes only**. A verified walk requires measured terrain-search points, no
+  sketches from map/minimap lines and direction guidance for **RicoPlates and
+  RicoMining routes**. A verified walk requires measured terrain-search points, no
   search error, and a validated point sequence. Other owners retain upstream
   behavior and ownership.
 - The TOC loads this bridge after the upstream modules.
@@ -20,6 +20,10 @@ Changes:
   combat only when RicoPlates has blocked an unverified walking leg. Calls are
   protected with `pcall`; another owner's waypoint is never cleared. This is
   not a general combat visibility mode: verified routes remain visible.
+- A newly requested RicoPlates journey starts at the player's position and
+  replaces the previous native waypoint. Its flight instructions point to the
+  departure flight master before boarding. The planner offers Hearthstone only
+  when the bind point itself satisfies the destination's arrival distance.
 - Fresh-install defaults disable peer sharing, travel-stat recording/sharing,
   automatic RestedXP following, corpse guidance, first-run popup and the TomTom stand-in. Existing saved choices
   are not overwritten. These can still be changed in the upstream settings.

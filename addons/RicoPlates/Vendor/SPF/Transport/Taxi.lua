@@ -221,15 +221,20 @@ local function ScanFlightMaster()
 	if uiMap then
 		Log("master", uiMap, nodes)
 	end
+	local learned = false
 	for _, node in ipairs(nodes) do
 		if ns.TaxiNodes[node.nodeID] then
-			if node.state ~= Enum.FlightPathState.Unreachable then
+			if node.state ~= Enum.FlightPathState.Unreachable and not ns.charDB.taxi[node.nodeID] then
 				ns.charDB.taxi[node.nodeID] = true
+				learned = true
 			end
 			if node.name and node.name ~= "" then
 				ns.charDB.taxiNames[node.nodeID] = node.name
 			end
 		end
+	end
+	if learned and ns.RicoRouteOwned and ns.RicoRouteOwned() then
+		ns.TravelPolicyChanged()
 	end
 end
 

@@ -2,8 +2,9 @@ local _, F = ...
 local M = { worldFrames = {}, miniFrames = {}, worldCount = 0, miniCount = 0 }
 F.Map = M
 
-local WORLD_LIMIT, MINI_LIMIT = 80, 32
+local WORLD_LIMIT, MINI_LIMIT = 160, 32
 local WORLD_SIZE, MINI_SIZE = 20, 16
+local WORLD_CELL_SIZE = 256
 local WHITE = "Interface\\Buttons\\WHITE8X8"
 
 local function Method(object, method, ...)
@@ -56,7 +57,7 @@ end
 local function ClearPin(pin)
     if GameTooltip and GameTooltip:IsOwned(pin) then GameTooltip:Hide() end
     pin:Hide()
-    pin.point = nil
+    pin.point, pin.spots = nil, nil
 end
 
 function M:ClearPins(frames)
@@ -65,18 +66,49 @@ end
 
 function M:ShowTooltip(pin)
     local point = pin.point
-    if not point or not self.entry or not GameTooltip then return end
+    if not point or not GameTooltip then return end
     local location = point.location
     local description = F.DescribeFishingLocation and F:DescribeFishingLocation(location)
         or (location.observed and "Forever catch report" or "Wowhead reference")
     GameTooltip:SetOwner(pin, "ANCHOR_RIGHT")
-    GameTooltip:SetText(self.entry.name)
+    GameTooltip:SetText(point.entry.name)
     GameTooltip:AddLine(description, 0.90, 0.75, 0.35, true)
     GameTooltip:AddLine(string.format("%s • %.2f, %.2f", location.zone or "Fishing spot", point.x * 100, point.y * 100), 0.80, 0.85, 0.90)
     local rate = F.FormatFishingRate and F:FormatFishingRate(location)
     if F.PublicString(rate) and rate ~= "" then GameTooltip:AddLine(rate, 0.83, 0.91, 0.88, true) end
-    GameTooltip:AddLine("Left-click to place a pin. Right-click for Rico GPS.", 0.35, 0.95, 0.75, true)
+    if point.fish then
+        local names = {}
+        for index = 1, math.min(#point.fish, 5) do names[index] = point.fish[index].name end
+        local more = #point.fish > #names and (" (+%d)"):format(#point.fish - #names) or ""
+        GameTooltip:AddLine("Also reported here: " .. table.concat(names, ", ") .. more, 0.83, 0.91, 0.88, true)
+    end
+    if pin.spots and #pin.spots > 1 then
+        GameTooltip:AddLine(("%d nearby fishing spots"):format(#pin.spots), 0.83, 0.91, 0.88, true)
+        GameTooltip:AddLine("Left-click to choose a pin. Right-click to choose a GPS route.", 0.35, 0.95, 0.75, true)
+    else
+        GameTooltip:AddLine("Left-click to place a pin. Right-click for Rico GPS.", 0.35, 0.95, 0.75, true)
+    end
     GameTooltip:Show()
+end
+
+local function UsePoint(point, gps)
+    if gps then M:StartGPS(point.entry, point.location, point.x, point.y)
+    else M:SetWaypoint(point.entry, point.location, point.x, point.y) end
+end
+
+local function OpenSpotMenu(pin, gps)
+    local spots = pin.spots
+    if not (spots and #spots > 1 and MenuUtil and MenuUtil.CreateContextMenu) then return false end
+    MenuUtil.CreateContextMenu(pin, function(_, menu)
+        menu:CreateTitle(gps and "GPS to fishing spot" or "Pin fishing spot")
+        if #spots > 10 then menu:SetScrollMode(250) end
+        for _, point in ipairs(spots) do
+            local label = ("%s · %s %.2f, %.2f"):format(point.entry.name, point.location.zone or "Fishing spot",
+                point.x * 100, point.y * 100)
+            menu:CreateButton(label, function() UsePoint(point, gps) end)
+        end
+    end)
+    return true
 end
 
 function M:GetPin(index, mini, parent)
@@ -104,22 +136,23 @@ function M:GetPin(index, mini, parent)
     frame:SetScript("OnClick", function(self, button)
         local point = self.point
         if not point then return end
-        if button == "RightButton" then M:StartGPS(M.entry, point.location, point.x, point.y)
-        else M:SetWaypoint(M.entry, point.location, point.x, point.y) end
+        local gps = button == "RightButton"
+        if not OpenSpotMenu(self, gps) then UsePoint(point, gps) end
     end)
     frame:Hide()
     frames[index] = frame
     return frame
 end
 
-function M:PlacePin(pin, point, parent, anchor, x, y)
+function M:PlacePin(pin, point, parent, anchor, x, y, spots)
     if pin.point ~= point then
         if GameTooltip and GameTooltip:IsOwned(pin) then GameTooltip:Hide() end
         pin.point = point
-        pin.icon:SetTexture(self.icon)
+        pin.icon:SetTexture(point.icon)
         if point.location.observed then pin.icon:SetVertexColor(1, 1, 1)
         else pin.icon:SetVertexColor(1, 0.84, 0.61) end
     end
+    pin.spots = spots
     pin:ClearAllPoints()
     pin:SetPoint("CENTER", parent, anchor, x, y)
     pin:Show()
@@ -142,30 +175,44 @@ local function Projection(mapID)
     end
 end
 
-function M:Rebuild(entry)
-    self.entry, self.points, self.minimapPoints = entry, {}, {}
-    if not entry then return end
-    self.icon = F:GetIcon(entry.id)
+function M:Rebuild(entry, allFish)
+    self.entry, self.allFish, self.points, self.minimapPoints = entry, allFish, {}, {}
+    self.worldProjection = nil
     local points, seen = self.points, {}
-    local locations = F.GetFishingLocations and F:GetFishingLocations(entry) or entry.locations
-    local function add(location, x, y)
+    local function add(subject, icon, location, x, y)
         if not self:ValidPoint(x, y) then return end
-        local key = string.format("%d:%.6f:%.6f", location.mapID, x, y)
+        local key = string.format("%d:%.17g:%.17g", location.mapID, x, y)
         local current = seen[key]
         if current then
-            if location.observed and not current.location.observed then current.location = location end
+            if subject == current.entry then
+                if location.observed and not current.location.observed then current.location = location end
+            else
+                local others = current.fish or {}
+                if others[#others] ~= subject then others[#others + 1] = subject end
+                current.fish = others
+            end
             return
         end
-        local point = { location = location, mapID = location.mapID, x = x, y = y }
+        local point = { entry = subject, icon = icon, location = location, mapID = location.mapID, x = x, y = y }
         seen[key] = point
         points[#points + 1] = point
     end
-    for _, location in ipairs(locations or {}) do
-        if F:CanPinFishingLocation(location) and self:MapUsable(location) then
-            add(location, location.x, location.y)
-            for _, point in ipairs(location.points or {}) do
-                add(location, point.x or point[1], point.y or point[2])
+    local function collect(subject)
+        local icon = F:GetIcon(subject.id)
+        local locations = F:GetFishingLocations(subject)
+        for _, location in ipairs(locations) do
+            if F:CanPinFishingLocation(location) and self:MapUsable(location) then
+                add(subject, icon, location, location.x, location.y)
+                for _, point in ipairs(location.points or {}) do
+                    add(subject, icon, location, point.x or point[1], point.y or point[2])
+                end
             end
+        end
+    end
+    if entry and (not allFish or entry.kind == "fish") then collect(entry) end
+    if allFish then
+        for _, subject in ipairs(F:GetCatalog(nil, "fish")) do
+            if subject ~= entry then collect(subject) end
         end
     end
     local matrices = {}
@@ -182,8 +229,13 @@ function M:Rebuild(entry)
             instance, point.wx, point.wy = WorldPosition(map, point.x, point.y)
         end
         if instance then
-            local bucket = self.minimapPoints[instance] or {}
-            self.minimapPoints[instance] = bucket
+            local grid = self.minimapPoints[instance] or {}
+            self.minimapPoints[instance] = grid
+            local cx, cy = math.floor(point.wx / WORLD_CELL_SIZE), math.floor(point.wy / WORLD_CELL_SIZE)
+            local column = grid[cx] or {}
+            grid[cx] = column
+            local bucket = column[cy] or {}
+            column[cy] = bucket
             bucket[#bucket + 1] = point
         end
     end
@@ -227,32 +279,84 @@ function M:ClearWorld()
     self.worldCount = 0
 end
 
+function M:WorldProjection(map)
+    local cached = self.worldProjection
+    if cached and cached.map == map then return cached.points end
+    local points, rectangles = {}, {}
+    for _, point in ipairs(self.points) do
+        local x, y = ProjectToMap(point, map, rectangles)
+        if self:ValidPoint(x, y) then points[#points + 1] = { point = point, x = x, y = y } end
+    end
+    self.worldProjection = { map = map, points = points }
+    return points
+end
+
+local function WorldView(world)
+    local rect = Read(world.GetViewRect, world)
+    if type(rect) ~= "table" or (canaccesstable and not canaccesstable(rect)) then return end
+    if F.Number(rect.left) and F.Number(rect.right) and F.Number(rect.top) and F.Number(rect.bottom)
+        and rect.right > rect.left and rect.bottom > rect.top then return rect end
+end
+
+-- Keep every exact source point in a bounded set of icons when the map gets crowded.
+local function GroupVisible(visible, columns, rows, left, right, top, bottom)
+    local groups, cells = {}, {}
+    for _, candidate in ipairs(visible) do
+        local col = math.min(columns - 1, math.floor((candidate.x - left) / (right - left) * columns))
+        local row = math.min(rows - 1, math.floor((candidate.y - top) / (bottom - top) * rows))
+        local cell = row * columns + col
+        local group = cells[cell]
+        if not group then
+            group = {point=candidate.point, x=candidate.x, y=candidate.y, spots={}}
+            groups[#groups + 1], cells[cell] = group, group
+        end
+        group.spots[#group.spots + 1] = candidate.point
+    end
+    return groups
+end
+
 function M:RefreshWorld()
     self:ClearWorld()
     local world = WorldMapFrame
-    if not self.entry or not Read(world and world.IsShown, world) then return end
+    if not (self.entry or self.allFish) or not Read(world and world.IsShown, world) then return end
     local canvas = Read(world.GetCanvas, world)
     local map = Read(world.GetMapID, world)
     local width, height = Read(canvas and canvas.GetWidth, canvas), Read(canvas and canvas.GetHeight, canvas)
     if not F.Number(map) or not F.Number(width) or not F.Number(height) or width <= 0 or height <= 0 then return end
-    local visible, rectangles = {}, {}
-    for _, point in ipairs(self.points) do
-        local x, y = ProjectToMap(point, map, rectangles)
-        if self:ValidPoint(x, y) then
-            visible[#visible + 1] = { point = point, x = x, y = y }
+    local visible = self:WorldProjection(map)
+    local view = WorldView(world)
+    if view then
+        local inView = {}
+        for _, candidate in ipairs(visible) do
+            if candidate.x >= view.left and candidate.x <= view.right
+                and candidate.y >= view.top and candidate.y <= view.bottom then
+                inView[#inView + 1] = candidate
+            end
         end
+        visible = inView
+    end
+    if #visible > WORLD_LIMIT then
+        if view then visible = GroupVisible(visible, 16, 10, view.left, view.right, view.top, view.bottom)
+        else visible = GroupVisible(visible, 16, 10, 0, 1, 0, 1) end
     end
     local level = canvas:GetFrameLevel() + 8
-    self.worldCount = math.min(#visible, WORLD_LIMIT)
-    for index = 1, self.worldCount do
-        -- Sample dense references across the canvas without averaging any coordinates.
-        local at = #visible <= WORLD_LIMIT and index or math.floor((index - 1) * (#visible - 1) / (WORLD_LIMIT - 1)) + 1
-        local candidate = visible[at]
+    self.worldCount = #visible
+    for index, candidate in ipairs(visible) do
         local pin = self:GetPin(index, false, canvas)
         pin:SetFrameLevel(level)
-        self:PlacePin(pin, candidate.point, canvas, "TOPLEFT", candidate.x * width, -candidate.y * height)
+        self:PlacePin(pin, candidate.point, canvas, "TOPLEFT", candidate.x * width, -candidate.y * height, candidate.spots)
     end
     self:ResizeWorldPins()
+end
+
+function M:QueueWorldRefresh()
+    if self.worldRefreshPending or not (self.entry or self.allFish) then return end
+    if not (C_Timer and C_Timer.After) then self:RefreshWorld(); return end
+    self.worldRefreshPending = true
+    C_Timer.After(0.1, function()
+        self.worldRefreshPending = nil
+        self:RefreshWorld()
+    end)
 end
 
 local function PlayerPosition()
@@ -271,12 +375,12 @@ end
 
 function M:RefreshMini()
     local map = Minimap
-    if not self.entry or not self.minimapPoints or not map or not Read(map.IsVisible, map) then self:ClearMini(); return end
+    if not (self.entry or self.allFish) or not self.minimapPoints or not map or not Read(map.IsVisible, map) then self:ClearMini(); return end
     local instance, px, py = PlayerPosition()
     local radius = Read(C_Minimap and C_Minimap.GetViewRadius)
     local width, height = map:GetWidth(), map:GetHeight()
-    local candidates = instance and self.minimapPoints[instance]
-    if not candidates or not F.Number(radius) or radius <= 0 or not F.Number(width) or not F.Number(height)
+    local grid = instance and self.minimapPoints[instance]
+    if not grid or not F.Number(radius) or radius <= 0 or not F.Number(width) or not F.Number(height)
         or width <= MINI_SIZE or height <= MINI_SIZE then self:ClearMini(); return end
     local facing = 0
     if Read(GetCVarBool, "rotateMinimap") == true and Read(C_Minimap.IsRotateMinimapIgnored) ~= true then
@@ -295,7 +399,7 @@ function M:RefreshMini()
     local cos, sin = math.cos(facing), math.sin(facing)
     local reachX, reachY = 1 - MINI_SIZE / width, 1 - MINI_SIZE / height
     local visible = {}
-    for _, point in ipairs(candidates) do
+    local function addVisible(point)
         local east, north = -(point.wy - py) / radius, (point.wx - px) / radius
         local x, y = east * cos + north * sin, -east * sin + north * cos
         if (square and math.abs(x) <= reachX and math.abs(y) <= reachY)
@@ -303,8 +407,20 @@ function M:RefreshMini()
             visible[#visible + 1] = { point = point, x = x, y = y, distance = x * x + y * y }
         end
     end
+    local extent = square and radius * math.sqrt(2) or radius
+    local lowX, highX = math.floor((px - extent) / WORLD_CELL_SIZE), math.floor((px + extent) / WORLD_CELL_SIZE)
+    local lowY, highY = math.floor((py - extent) / WORLD_CELL_SIZE), math.floor((py + extent) / WORLD_CELL_SIZE)
+    for cx = lowX, highX do
+        local column = grid[cx]
+        if column then
+            for cy = lowY, highY do
+                for _, point in ipairs(column[cy] or {}) do addVisible(point) end
+            end
+        end
+    end
     table.sort(visible, function(a, b) return a.distance < b.distance end)
-    self.miniCount = math.min(#visible, MINI_LIMIT)
+    if #visible > MINI_LIMIT then visible = GroupVisible(visible, 8, 4, -1, 1, -1, 1) end
+    self.miniCount = #visible
 
     -- Keep a visible location attached to the same button as the player moves.
     local desired, existing, free = {}, {}, {}
@@ -319,7 +435,7 @@ function M:RefreshMini()
         if pin:GetParent() ~= map then pin:SetParent(map) end
         pin:SetFrameLevel(level)
         pin:SetSize(MINI_SIZE, MINI_SIZE)
-        self:PlacePin(pin, candidate.point, map, "CENTER", candidate.x * width / 2, candidate.y * height / 2)
+        self:PlacePin(pin, candidate.point, map, "CENTER", candidate.x * width / 2, candidate.y * height / 2, candidate.spots)
     end
     for _, pin in ipairs(free) do if pin.point then ClearPin(pin) end end
 end
@@ -334,13 +450,14 @@ end
 function M:Refresh()
     self:HookWorldMap()
     local entry = F.db and F.db.pins and F:GetEntry(F.db.selected)
+    local allFish = F.db and F.db.pins and F.db.pinsAllFish == true
     self:ClearMini()
-    self:Rebuild(entry)
+    self:Rebuild(entry, allFish)
     self:RefreshWorld()
     self:RefreshMini()
     if self.worker then
         self.worker.elapsed = 0
-        self.worker:SetScript("OnUpdate", entry and next(self.minimapPoints) and Tick or nil)
+        self.worker:SetScript("OnUpdate", next(self.minimapPoints) and Tick or nil)
     end
 end
 
@@ -359,6 +476,16 @@ function M:SetWaypoint(entry, location, x, y)
     end
     local point = Read(UiMapPoint and UiMapPoint.CreateFromCoordinates, location.mapID, x, y)
     if not point or Read(C_Map.SetUserWaypoint, point) ~= true then F:Print("WoW could not place the waypoint."); return false end
+    local routes = RicoPlates and RicoPlates.QuestRoutes
+    local stopped, replaced = Method(routes, "Stop")
+    if stopped and replaced == true then
+        -- Stopping guidance can clear its waypoint when the new pin is at the same coordinates.
+        local pin = Read(C_Map.GetUserWaypoint)
+        local pinX, pinY = XY(pin and pin.position)
+        if not pin or pin.uiMapID ~= location.mapID or pinX ~= x or pinY ~= y then
+            if Read(C_Map.SetUserWaypoint, point) ~= true then F:Print("WoW could not keep the new waypoint."); return false end
+        end
+    end
     if C_SuperTrack then F.Call(C_SuperTrack.SetSuperTrackedUserWaypoint, true) end
     F:Print(string.format("%s pin at %.2f, %.2f.", entry.name, x * 100, y * 100))
     return true
@@ -401,7 +528,13 @@ function M:HookWorldMap()
         hooksecurefunc(world, "SetMapID", function() M:RefreshWorld() end)
     end
     if hooksecurefunc and type(world.OnCanvasScaleChanged) == "function" then
-        hooksecurefunc(world, "OnCanvasScaleChanged", function() M:ResizeWorldPins() end)
+        hooksecurefunc(world, "OnCanvasScaleChanged", function()
+            M:ResizeWorldPins()
+            M:QueueWorldRefresh()
+        end)
+    end
+    if hooksecurefunc and type(world.OnCanvasPanChanged) == "function" then
+        hooksecurefunc(world, "OnCanvasPanChanged", function() M:QueueWorldRefresh() end)
     end
     local canvas = Read(world.GetCanvas, world)
     if canvas then canvas:HookScript("OnSizeChanged", function() M:RefreshWorld() end) end
@@ -409,6 +542,10 @@ end
 
 function M:GetStatus()
     if not F.db or not F.db.pins then return "Fishing markers: off." end
+    if self.allFish then
+        if #self.points == 0 then return "No published fishing coordinates are available." end
+        return string.format("All fish: %d markers on the world map, %d nearby on the minimap.", self.worldCount, self.miniCount)
+    end
     if self.entry and #self.points == 0 then return "No published pin coordinates for " .. self.entry.name .. "." end
     if self.entry and self.miniCount == 0 then return "No spots for " .. self.entry.name .. " within minimap range." end
     return string.format("Fishing markers: %d on the world map, %d nearby on the minimap.", self.worldCount, self.miniCount)

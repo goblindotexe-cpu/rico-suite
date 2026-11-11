@@ -350,11 +350,10 @@ FinishSearch = function()
 				if leg.mode == "walk" then
 					local entry = Walks.Measured(leg)
 					if entry then
-						if refine then
-							leg.walkPoints = entry.points or {}
-						end
+						leg.walkPoints, leg.walkDrawn = entry.points or {}, entry.points ~= nil
+						leg.walkDeferred = nil
 						leg.walkError, leg.wet = entry.reason, entry.points and entry.points.wet
-						leg.measured, leg.walkCost = entry.reason == nil, entry.cost or leg.walkCost
+						leg.measured, leg.walkCost = entry.points ~= nil and entry.reason == nil, entry.cost or leg.walkCost
 					end
 				end
 			end
@@ -417,9 +416,8 @@ local function Plan(feasible, incumbent)
 		return followed
 	end
 	local options = Context.Options(here, goal)
-	-- This is a manual refusal for the active journey only. Keep it out of Context.Options so
-	-- public estimates and nearby-service planning retain the normal Hearthstone policy.
-	options.withoutHearth = ns.JourneyWithoutHearth and ns.JourneyWithoutHearth() or false
+	-- Public estimates and nearby-service planning keep their usual Hearthstone policy.
+	ns.ApplyJourneyHearthPolicy(options, goal)
 	local now = options.now
 	lastRunSpeed = options.walkSpeed
 	local walks = MeasuredWalks(here)

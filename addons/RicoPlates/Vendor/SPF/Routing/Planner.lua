@@ -565,9 +565,18 @@ local function Plan(options)
 	end
 	-- Teleports leave from where you stand, once each is ready: its cooldown is a wait, like a boat's.
 	local ready = options.teleportReady or {}
+	local hearthRadius = options.hearthArrivalRadius
 	for id, teleport in ipairs(options.teleports or {}) do
-		if ready[id] and teleports[teleport.spell] then
-			Edge(start, teleports[teleport.spell], {
+		local destination = teleports[teleport.spell]
+		if teleport.item == 6948 and hearthRadius then
+			-- The bind point must itself arrive at the goal. A direct edge cannot continue to another ride.
+			local target = options.to
+			local arrives = teleport.map == target.map
+				and (teleport.x - target.x) ^ 2 + (teleport.y - target.y) ^ 2 <= hearthRadius ^ 2
+			destination = arrives and goal or nil
+		end
+		if ready[id] and destination then
+			Edge(start, destination, {
 				mode = "teleport",
 				teleport = teleport,
 				ready = ready[id],

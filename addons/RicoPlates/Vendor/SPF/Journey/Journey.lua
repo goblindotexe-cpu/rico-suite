@@ -20,6 +20,7 @@ local USE_ITEM, CAST_SPELL = L["Use %s"], L["Cast %s"]
 local ICON = "|T%d:0|t "
 
 local goal, result
+local waitingWaypointReplacement
 local policyChanged
 local nextPoint
 local progress = { index = 1 }
@@ -89,8 +90,20 @@ function ns.JourneyGoal()
 	return goal
 end
 
-function ns.JourneyWithoutHearth()
-	return withoutHearth
+-- A proxied dungeon entrance is not the original destination.
+local function HearthArrivalRadius(point)
+	if point and point.stop and point.stop.hearthOnlyAtGoal then
+		return false
+	end
+	if point and point.hearthOnlyAtGoal then
+		return math.min(ARRIVAL, point.radius or ARRIVAL)
+	end
+end
+
+function ns.ApplyJourneyHearthPolicy(options, point)
+	local radius = HearthArrivalRadius(point)
+	options.withoutHearth = withoutHearth or radius == false
+	options.hearthArrivalRadius = radius or nil
 end
 
 function ns.TravelPolicyChanged()
@@ -212,6 +225,7 @@ local function EndJourney(reason)
 	Search.Reset()
 	goal, result, nextPoint = nil, nil, nil
 	withoutHearth = false
+	waitingWaypointReplacement = nil
 	if ns.JourneyChanged then
 		ns.JourneyChanged(nil, reason)
 	end
@@ -280,8 +294,8 @@ function ns.JourneyStatus()
 	return pending > 0, settleRound, costError
 end
 
-local function StartGuide()
-	Guide.Start()
+local function StartGuide(replaceWaypoint)
+	Guide.Start(replaceWaypoint)
 	UpdateProgress()
 end
 
@@ -573,7 +587,7 @@ end
 -- You are alive again: the journey plans afresh from wherever that is, guided as it was.
 function ns.ResumeJourney()
 	if goal then
-		ns.StartJourney(goal)
+		ns.StartJourney(goal, waitingWaypointReplacement)
 		-- The route you were on shows again at once, until the new plan replaces it.
 		if result then
 			Refresh()
@@ -589,25 +603,31 @@ function ns.ResumeJourney()
 end
 
 ---@param point SPFPoint
+---@param replaceWaypoint? boolean
 ---@return boolean
-function ns.StartJourney(point)
+function ns.StartJourney(point, replaceWaypoint)
 	point = ns.InstanceEntrance(point)
+	local reuse = not replaceWaypoint
+		and goal and SamePlace(goal, point)
+		and HearthArrivalRadius(goal) == HearthArrivalRadius(point)
 	if CorpseRun() then
 		-- Queued behind the corpse run, which ResumeJourney plans from where you come back to life.
-		if not (goal and SamePlace(goal, point)) then
+		if not reuse then
 			result = nil
 			withoutHearth = false
 			Search.Clear(false)
 			progress.index, progress.departed = 1, false
 		end
 		goal, nextPoint, waitingGuided = point, nil, true
+		waitingWaypointReplacement = replaceWaypoint
 		if ns.JourneyChanged then
 			ns.JourneyChanged(point)
 		end
 		RefreshTracker()
 		return true
 	end
-	local previous = Search.Clear(goal and SamePlace(goal, point)) and result
+	waitingWaypointReplacement = nil
+	local previous = Search.Clear(reuse) and result
 	withoutHearth = false
 	if previous then
 		for _, leg in ipairs(previous.legs) do
@@ -634,7 +654,7 @@ function ns.StartJourney(point)
 	Search.Start(goal, result, progress, Follow)
 	-- Every journey starts guided; the tracker header turns it off.
 	if goal then
-		StartGuide()
+		StartGuide(replaceWaypoint)
 		RefreshTracker()
 	end
 	return true

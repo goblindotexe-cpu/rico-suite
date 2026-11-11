@@ -36,7 +36,7 @@ local COLORS = {
 local provider, goal, paths, worldPaths, stops, stopIndex
 -- The route's pools on the world map (UI/MapCanvas.lua), made at load.
 ---@type SPFCanvasPool, SPFCanvasPool, SPFCanvasPool
-local linePins, goalPins, areaPins
+local linePins, goalPins, areaPins, originPins
 -- Whether this client has the blob widget QuestBlob.lua's pin is; nil until the first area is wanted.
 ---@type boolean?
 local areaSupported
@@ -381,10 +381,29 @@ end
 ---@field area? boolean
 local Layer = {}
 
+local OriginPin = CreateFromMixins(MapCanvas.PinMixin)
+
+function OriginPin:OnLoad()
+	self:UseFrameLevelType("PIN_FRAME_LEVEL_WAYPOINT_LOCATION")
+	self:SetIgnoreGlobalPinScale(true)
+	self:SetScalingLimits(1, 1, 1)
+	self:SetSize(12, 12)
+	local ring = self:CreateTexture(nil, "OVERLAY")
+	ring:SetPoint("CENTER")
+	ns.Art.Fit(ring, RING_ATLAS, 12, 12)
+	ring:SetDesaturated(true)
+	ring:SetVertexColor(0.33, 1, 0.75)
+end
+
+function OriginPin:OnAcquired(x, y)
+	self:SetPosition(x, y)
+end
+
 function Layer:RemoveAllData()
 	linePins:ReleaseAll()
 	goalPins:ReleaseAll()
 	areaPins:ReleaseAll()
+	originPins:ReleaseAll()
 	self.stopsKey, self.stopMarks, self.area = nil, nil, nil
 end
 
@@ -403,6 +422,13 @@ function Layer:RefreshAllData()
 	self.area = DrawArea(map)
 	if self.area then
 		return
+	end
+	local origin = goal.ricoStart or goal.stop and goal.stop.ricoStart
+	if origin then
+		local x, y = MapPosition(origin, map:GetMapID())
+		if OnMap(x, y) then
+			originPins:Acquire(x, y)
+		end
 	end
 	-- The stops go first: the line leaves a gap at each.
 	self:RefreshStops()
@@ -701,6 +727,7 @@ end
 
 ns.Init(function()
 	linePins = MapCanvas.Pool(WorldMapFrame, LINE_TEMPLATE, RoutePin)
+	originPins = MapCanvas.Pool(WorldMapFrame, "RicoPlatesNavigationRouteOrigin", OriginPin)
 	goalPins =
 		MapCanvas.Pool(WorldMapFrame, GOAL_TEMPLATE, ns.GoalPinMixin, { template = GOAL_TEMPLATE, marker = "stop" })
 	areaPins = MapCanvas.Pool(

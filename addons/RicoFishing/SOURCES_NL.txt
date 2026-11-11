@@ -168,6 +168,35 @@ geldt niet per kaartpunt en is niet overgenomen.
 
 https://www.foreverdb.app/en/forever/items/6308/raw-bristle-whisker-catfish
 
+Voor Raw Longjaw Mud Snapper, Raw Slitherskin Mackerel, Raw Spotted Yellowtail,
+Raw Rockscale Cod en Minor Healing Potion zijn ook Fishing-punten uit de openbare
+ForeverDB-itemkaarten opgenomen. Alleen coördinaten die de bron aan de
+betreffende vis koppelt zijn overgenomen. De percentages op de itemkaarten
+worden niet als kansen per punt gebruikt.
+
+https://www.foreverdb.app/en/forever/items/6289/raw-longjaw-mud-snapper
+https://www.foreverdb.app/en/forever/items/6303/raw-slitherskin-mackerel
+https://www.foreverdb.app/en/forever/items/4603/raw-spotted-yellowtail
+https://www.foreverdb.app/en/forever/items/6362/raw-rockscale-cod
+https://www.foreverdb.app/en/forever/items/118/minor-healing-potion
+
+Twee Whimsyfin-plekken in Redridge Mountains komen uit de veldnotities bij
+FishFry 1.4.4. Het Azshara-punt bij Eldarath komt uit FourteeTwo's eigen
+Forever-betavangsten, met coördinaten en soorten vermeld bij Raw Rockscale Cod.
+
+https://www.curseforge.com/wow/addons/fishfry-forever/files/9172375
+https://www.wowhead.com/forever/item=6362/raw-rockscale-cod
+
+De FishFry 1.4.5-route koppelt Sickly Looking Fish en Old Skull aan een
+openbare plek aan de oever van Brightwater Lake. Die coördinaten verwijzen
+naar de visplek aan de oever. WoWForever.gg vermeldt ook openbare posities
+van scholen voor Deviate Fish, Oily Blackmouth en Raw Sagefish op basis van
+QuestieDB Forever 7901fee. Deze kaartpunten geven geen actuele spawns aan.
+
+https://www.curseforge.com/wow/addons/fishfry-forever/files/9190872
+https://wowforever.gg/en/professions/fishing/
+https://github.com/Questie/QuestieDB/tree/7901fee2753cecb577a72c2e4b7126198e05baec
+
 KAARTPUNTEN EN TELLERS
 
 Een pin gebruikt een openbaar vangstpunt voor de geselecteerde vis. Een bron
@@ -175,6 +204,10 @@ met alleen een zone, subzone of geaggregeerd kaartvak krijgt geen pin. Een
 expliciete waypointklik kan de bestaande Blizzard-waypoint vervangen.
 RicoFishing tekent zijn iconen op de wereldkaart en minimap zonder Questie.
 Rico GPS controleert of er een begaanbare route naar het punt is.
+Met Show all fish on both maps toont Rico de bekende punten van de vissen uit
+de catalogus. De minimap toont plekken in de buurt. Bij een gedeelde marker kun
+je een plek kiezen met linksklik voor Pin of rechtsklik voor GPS. Inzoomen op
+de wereldkaart toont dicht bij elkaar liggende meldingen in meer detail.
 
 Je eigen fishingloot en voorraaddoel vullen niet automatisch ontbrekende
 globale brongegevens in. Voorraad is niet hetzelfde als zelf gevangen:

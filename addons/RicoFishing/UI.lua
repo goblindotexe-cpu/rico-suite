@@ -517,6 +517,7 @@ function U:Build()
     self.pinsCheck:HookScript("OnLeave", function(check)
         if GameTooltip and GameTooltip:IsOwned(check) then GameTooltip:Hide() end
     end)
+    self.allPinsCheck = Check(frame, "Show all fish on both maps", "pinsAllFish", 350, -575)
     frame:Hide()
     self.building = false
 end
@@ -635,6 +636,8 @@ function U:Refresh()
     self:RefreshLocations(entry)
     self.hudCheck:SetChecked(F.db.hud)
     self.pinsCheck:SetChecked(F.db.pins)
+    self.allPinsCheck:SetChecked(F.db.pinsAllFish == true)
+    self.allPinsCheck:SetEnabled(F.db.pins == true)
     if self.oneKeyCheck then
         self.oneKeyCheck:SetChecked(F.db.oneKey)
         self.oneKeyStatus:SetText(F.OneKey:GetStatus())

@@ -165,6 +165,17 @@ function ns.AdvanceJourneyProgress(legs, progress, goal, riding, flying, near, g
 			progress.index = progress.index + 1
 			leg = nextLeg
 		end
+		-- Reaching a flight master and boarding a flight are distinct steps.
+		if
+			leg.mode == "flight"
+			and not flying
+			and not progress.departed
+			and ns.RicoRouteOwned
+			and ns.RicoRouteOwned()
+		then
+			guide.To(leg.from, nil, goal, leg)
+			return true
+		end
 		local aboard = leg.aboard
 			or leg.mode == "teleport"
 			or (leg.route and riding == leg.route)

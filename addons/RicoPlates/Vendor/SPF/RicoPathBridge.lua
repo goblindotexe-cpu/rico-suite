@@ -36,6 +36,8 @@ local function Ours(owner)
         and not (ns.Corpse and ns.Corpse.Active and ns.Corpse.Active())
 end
 
+ns.RicoRouteOwned = Ours
+
 local function Verified(leg)
     if type(leg) ~= "table" or leg.mode ~= "walk" or leg.measured ~= true
         or leg.walkDrawn ~= true or leg.walkError ~= nil then return false end
@@ -54,15 +56,16 @@ function ns.RicoRouteBlocked()
     return not leg or (leg.mode == "walk" and not Verified(leg))
 end
 
--- Keep the upstream painter and its pools; omit sketches or failed walking
--- searches instead of converting them into a straight, supposedly usable road.
+-- Draw the connected route from the player's current leg. Later flight paths
+-- would appear to be the start while an earlier walking approach is unresolved.
 local paint = ns.SetJourneyRoute
 ns.SetJourneyRoute = function(destination, plan)
     if not Ours() or type(plan) ~= "table" or type(plan.legs) ~= "table" then return paint(destination, plan) end
     local verified = { legs = {} }
     for key, value in pairs(plan) do if key ~= "legs" then verified[key] = value end end
     for _, leg in ipairs(plan.legs) do
-        if leg.mode ~= "walk" or Verified(leg) then verified.legs[#verified.legs + 1] = leg end
+        if leg.mode == "walk" and not Verified(leg) then break end
+        verified.legs[#verified.legs + 1] = leg
     end
     return paint(destination, verified)
 end
@@ -165,6 +168,14 @@ function B.GetStatus(owner)
         return {ready=true, state=reason and "no_path" or "searching", verified=false, mode="walk", reason=reason,
             searchPending=pending == true, message=reason and Failure(reason)
                 or "Checking walkable terrain before showing this route…"}
+    end
+    if leg.mode == "flight" and not UnitOnTaxi("player") then
+        local from = Text(ns.PlaceLabel(leg.from), 80)
+        local to = Text(ns.PlaceLabel(leg.to), 80)
+        if from and to then
+            return {ready=true, state="active", verified=true, mode="flight",
+                message=("Take the flight from %s to %s."):format(from, to)}
+        end
     end
     return {ready=true, state="active", verified=true, mode=leg.mode,
         message="Follow the marked travel step; walking directions appear after terrain verification."}
