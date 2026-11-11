@@ -162,13 +162,15 @@ function P:ResizeWorldIcons()
     if self.worldResizeIndex then self.worldResizeAgain=true; return end
     self.worldResizeIndex=1
     self.worldLayer:SetScript("OnUpdate",function(layer)
-        local scale=P:WorldScale()
-        local last=math.min(P.worldCount,P.worldResizeIndex+BATCH-1)
-        for index=P.worldResizeIndex,last do P.worldPins[index].icon:SetSize(16/scale,16/scale) end
-        P.worldResizeIndex=last+1
-        if P.worldResizeIndex>P.worldCount then
-            if P.worldResizeAgain then P.worldResizeAgain=nil; P.worldResizeIndex=1
-            else P.worldResizeIndex=nil; layer:SetScript("OnUpdate",nil) end
+        local first=self.worldResizeIndex
+        if not first then layer:SetScript("OnUpdate",nil); return end
+        local scale=self:WorldScale()
+        local last=math.min(self.worldCount,first+BATCH-1)
+        for index=first,last do self.worldPins[index].icon:SetSize(16/scale,16/scale) end
+        self.worldResizeIndex=last+1
+        if self.worldResizeIndex>self.worldCount then
+            if self.worldResizeAgain then self.worldResizeAgain=nil; self.worldResizeIndex=1
+            else self.worldResizeIndex=nil; layer:SetScript("OnUpdate",nil) end
         end
     end)
 end

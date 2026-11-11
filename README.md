@@ -5,7 +5,7 @@ tools, mining tools, and a combined inventory to World of Warcraft: Forever.
 
 | Addon | Open in game | Includes |
 | --- | --- | --- |
-| RicoPlates | `/rp` | Nameplates, cast alerts, heal and range indicators, party frames, square minimap, quest guidance, mining, and inventory |
+| RicoPlates | `/rp` | Nameplates, unit frames, animated XP, map services, quest guidance, mining, and inventory |
 | RicoLoot | `/rl` | Loot tables, local observations, and item goals |
 | RicoFishing | `/rf` | Customizable One-Key Fishing, per-character catch log, fishing guide, and goals |
 
@@ -25,6 +25,9 @@ and click **Fishing key**. Press a key or key combination, or use the wheel,
 middle button, or a side button while hovering over the key field.
 Open `/rf log` to browse the current and previous sessions. Open `/rp minimap`
 to configure the square minimap, clock, and additional area overview.
+Open **Map services** on the world map or in the Rico minimap menu to filter
+service pins. These pins read locations from the installed
+[QuestieDB for Forever](https://github.com/Questie/QuestieDB).
 
 ## Data and credits
 

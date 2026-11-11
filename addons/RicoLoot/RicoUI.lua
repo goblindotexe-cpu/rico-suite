@@ -81,6 +81,7 @@ end
 
 function T:Liquid(parent, settings)
     local config = settings or {}
+    local waveScale = config.waveScale or (config.health and 38 or 145)
     local vertical = config.vertical == true
     local place = vertical and VerticalPoints or Points
     local liquid = CreateFrame("Frame", nil, parent)
@@ -146,7 +147,7 @@ function T:Liquid(parent, settings)
             -- Different wavelengths and currents keep the liquid asymmetric:
             -- broad folds, small eddies and slow highlights rather than a wire grid.
             local phase = strand * 2.399
-            local u = x / (config.health and 68 or 145)
+            local u = x / waveScale
             return height * (0.50
                 + (0.22 + strand * 0.012) * sin(u * (1.1 + strand * 0.13) + phase - time * (0.19 + strand * 0.017))
                 + 0.095 * sin(u * (2.8 + strand * 0.11) - phase * 0.7 + time * 0.23)

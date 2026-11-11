@@ -11,6 +11,7 @@ if not L then
         {name="Rico Fishing", hint="Fishing guide and catch tracker", addon="RicoFishing", module="UI", method="Toggle"},
         {name="Rico Plates", hint="Nameplates, unitframes and party", addon="RicoPlates", module="Options", method="Toggle"},
         {name="Quest routes", hint="Walking routes to quests or map pins", addon="RicoPlates", module="QuestRouteUI", method="Show"},
+        {name="Map services", hint="Mailboxes, banks, inns and more", addon="RicoPlates", module="ServicesMenu", method="Toggle"},
         {name="Rico Mining", hint="Mining sites, farm routes and skill help", addon="RicoMining", module="UI", method="Show"},
         {name="Inventory", hint="All carried bags together", addon="RicoPlates", module="Inventory", method="Toggle"},
     }

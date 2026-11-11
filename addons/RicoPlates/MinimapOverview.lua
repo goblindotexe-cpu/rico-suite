@@ -228,7 +228,7 @@ function Overview:Draw()
     local screenX = math.max(6, math.min(width - 6, (markerX - left) * view.scaleX))
     local screenY = math.max(6, math.min(height - 6, (markerY - top) * view.scaleY))
     frame.marker:SetPoint("CENTER", frame, "TOPLEFT", screenX, -screenY)
-    self.lastView = { art = art, x = x, y = y, radius = radius, width = width, height = height }
+    self.lastView = { map = map, crop = view, art = art, x = x, y = y, radius = radius, width = width, height = height }
     return true
 end
 

@@ -1,9 +1,9 @@
 local addonName, RP = ...
 _G.RicoPlates = RP
-RP.name, RP.version = addonName, "1.29.4"
+RP.name, RP.version = addonName, "1.31.2"
 RP.media = "Interface\\AddOns\\" .. addonName .. "\\Media\\"
 RP.defaults = {
-    enabled = true, showFriendlyNPCs = false,
+    enabled = true, showFriendlyNPCs = false, serviceMapFilter = "all",
     showParty = true, showRaid = true, showPower = true, showPowerNPC = false,
     showClass = true, showFaction = true, showLevel = true, showCast = true, interruptIndicators = true,
     healthText = "percent", powerText = "value", width = 190, height = 19,
@@ -280,8 +280,17 @@ function RP:ApplySettings()
     if self.QuestRoutes then self.QuestRoutes:UpdateSettings() end
     if self.QuestTracker then self.QuestTracker:UpdateSettings() end
     if self.PickPocketHUD then self.PickPocketHUD:UpdateSettings() end
+    if self.ExperienceBar then self.ExperienceBar:Refresh() end
     if self.World and self.World.UpdateSettings then self.World:UpdateSettings() end
     if self.Minimap then self.Minimap:UpdateSettings() end
+    if self.Services and self.ServicesMap then
+        local filter = self.Services:GetFilter()
+        if self.appliedServiceMapFilter ~= filter then
+            self.appliedServiceMapFilter = filter
+            self.ServicesMap:Refresh()
+            if self.ServicesMenu then self.ServicesMenu:Refresh() end
+        end
+    end
     if self.Options and self.Options.RefreshPreview then self.Options:RefreshPreview() end
 end
 
@@ -394,12 +403,13 @@ local function Slash(message)
     elseif command == "reset" then RP:Reset()
     elseif command == "preview" or command == "voorbeeld" then RP.Options:Toggle(true)
     elseif command == "minimap" then RP.Options:Toggle(true); RP.Options:SelectPage(7)
+    elseif command == "services" and RP.ServicesMenu then RP.ServicesMenu:Toggle()
     elseif command == "unlock" or command == "verplaatsen" then
         if RP.UnitFrames then RP.UnitFrames:SetUnlocked(true) end
     elseif command == "lock" or command == "vastzetten" then
         if RP.UnitFrames then RP.UnitFrames:SetUnlocked(false) end
     elseif command == "help" then
-        RP:Print("/rp: settings | /rp minimap: map settings | /rp unlock / lock: move unitframes | /rp status: diagnostics | /rp restore: restore game UI | /rp reset: defaults.")
+        RP:Print("/rp: settings | /rp minimap: map settings | /rp services: map filters | /rp unlock / lock: move unitframes | /rp status: diagnostics | /rp restore: restore game UI | /rp reset: defaults.")
     else RP.Options:Toggle() end
 end
 
@@ -410,6 +420,7 @@ function RP:Initialize()
     if self.Inventory then self.Inventory:Initialize() end
     if self.Minimap then self.Minimap:Initialize() end
     if self.PickPocketHUD then self.PickPocketHUD:Initialize() end
+    if self.ExperienceBar then self.ExperienceBar:Initialize() end
     if not C_NamePlate or not C_NamePlate.GetNamePlateForUnit then
         self:Print("This client has no supported nameplate API. Use the Forever client.")
         return

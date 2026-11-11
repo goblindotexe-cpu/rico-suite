@@ -2,8 +2,10 @@ local _, RP = ...
 local T = RP.Theme
 local H = {}
 RP.PickPocketHUD = H
+local unpack = unpack or table.unpack
 
 local MIN_WIDTH, HEIGHT, COIN_SIZE = 108, 30, 12
+local SMOKE = RP.media .. "QuestTrackerPromptSmoke.tga"
 
 local function CoinText(total)
     local format = C_CurrencyInfo and C_CurrencyInfo.GetCoinTextureString or GetCoinTextureString
@@ -67,6 +69,37 @@ local function StopDrag(frame)
     end
 end
 
+local function BuildSmoke(frame)
+    local pulse = frame:CreateAnimationGroup()
+    pulse:SetLooping("BOUNCE")
+    local seconds = 3.6
+
+    local function AddLayer(side, x, y, blend, depth, tint, low, high)
+        local cloud = frame:CreateTexture(nil, "BACKGROUND", nil, depth)
+        cloud:SetTexture(SMOKE)
+        cloud:SetBlendMode(blend)
+        cloud:SetPoint("CENTER", frame, side, x, y)
+        cloud:SetSize(104, 84)
+        cloud:SetVertexColor(unpack(tint))
+        cloud:SetAlpha(low)
+        if side == "RIGHT" then cloud:SetTexCoord(1, 0, 0, 1) end
+
+        local fade = pulse:CreateAnimation("Alpha")
+        fade:SetTarget(cloud)
+        fade:SetFromAlpha(low)
+        fade:SetToAlpha(high)
+        fade:SetDuration(seconds)
+        fade:SetSmoothing("IN_OUT")
+    end
+
+    -- The opaque panel covers these background layers wherever they meet the HUD.
+    AddLayer("LEFT", 12, -4, "BLEND", -3, { 0.40, 0.66, 0.55, 0.45 }, 0.49, 0.76)
+    AddLayer("LEFT", 12, -4, "ADD",   -2, { 0.27, 0.94, 0.60, 0.35 }, 0.30, 0.66)
+    AddLayer("RIGHT", -12, 4, "BLEND", -3, { 0.44, 0.62, 0.48, 0.42 }, 0.46, 0.70)
+    AddLayer("RIGHT", -12, 4, "ADD",   -2, { 0.49, 0.83, 0.51, 0.32 }, 0.25, 0.57)
+    frame.smokePulse = pulse
+end
+
 local function BuildFinish(frame)
     T:Panel(frame)
     frame.ricoBorder[1]:SetVertexColor(0.42, 0.53, 0.39, 1)
@@ -116,6 +149,7 @@ function H:Build()
     frame:EnableMouse(true)
     frame:RegisterForDrag("LeftButton")
     frame:Hide()
+    BuildSmoke(frame)
     BuildFinish(frame)
 
     local amount = frame:CreateFontString(nil, "OVERLAY")
@@ -144,8 +178,10 @@ function H:Build()
         self.trim:SetAlpha(0.78)
         HideTooltip(self)
     end)
+    frame:SetScript("OnShow", function(self) self.smokePulse:Play() end)
     frame:SetScript("OnHide", function(self)
         self.trim:SetAlpha(0.78)
+        self.smokePulse:Stop()
         self.coinFlash:Stop()
         HideTooltip(self)
         StopDrag(self)
