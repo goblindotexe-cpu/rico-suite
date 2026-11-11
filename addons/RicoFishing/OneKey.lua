@@ -274,7 +274,10 @@ function K:GetStatus()
     if not F.db.oneKey then return "One-key fishing is off." end
     if self:GetKey() == "" then return "Choose a key in Fishing tools." end
     local label = self:GetKeyLabel()
-    if self.mode == "reel" then return ("Press %s when the bobber splashes."):format(label) end
+    if self.mode == "reel" then
+        if F.BiteDetector and F.BiteDetector:IsBite() == true then return ("Fish on the line! Press %s to reel in."):format(label) end
+        return ("Press %s when the bobber splashes."):format(label)
+    end
     if self.mode == "cast" then return ("Press %s to cast."):format(label) end
     return "Learn Fishing and equip a fishing pole."
 end

@@ -1,6 +1,6 @@
 local addonName, F = ...
 _G.RicoFishing = F
-F.name, F.version = addonName, "1.11.0"
+F.name, F.version = addonName, "1.12.0"
 F.session = { items = {}, quantity = 0, loots = 0 }
 F.defaults = { selected = 6291, goal = 20, pins = true, pinsAllFish = true, hud = true, oneKey = true, fishingKey = "F",
     lureTimer = true, bagWarning = true, favoriteAlerts = true, fishingPrompt = true, recentCatches = true, hudX = 0, hudY = 165 }
@@ -56,6 +56,7 @@ function F:Refresh()
         and (self.OneKey.setting ~= self.db.oneKey or self.OneKey.keySetting ~= self.db.fishingKey) then
         self.OneKey:Update()
     end
+    if self.BiteDetector then self.BiteDetector:Sync() end
     if self.warningsReady and (self.lureTimerSetting ~= self.db.lureTimer or self.bagWarningSetting ~= self.db.bagWarning) then
         self.lureTimerSetting, self.bagWarningSetting = self.db.lureTimer, self.db.bagWarning
         self.Warnings:RefreshOptions()
@@ -199,6 +200,7 @@ function F:Command(text)
     elseif command == "log" and self.SessionLog then self.SessionLog:Toggle()
     elseif command == "spots" and self.spotsReady then self.SpotStats:Toggle()
     elseif command == "tools" and self.UI then self.UI:ToggleTools()
+    elseif command == "bite" and self.BiteDetector then self.BiteDetector:Command(argument)
     elseif command == "key" and self.OneKey then
         self:SetOption("oneKey", not self.db.oneKey)
         self:Print(self.OneKey:GetStatus())

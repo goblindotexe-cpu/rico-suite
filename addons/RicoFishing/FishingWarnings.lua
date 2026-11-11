@@ -8,6 +8,20 @@ local LURE_BONUS = { [263] = 25, [264] = 50, [265] = 75, [266] = 100 }
 local LOW_BAGS = 2
 local AMBER, RED = "|cffffba57", "|cffff625c"
 local MINT = { 0.52, 1, 0.77 }
+local BITE_RED = { 1, 0.42, 0.36 }
+local CAST_TEXT = { 0.95, 0.99, 0.97 }
+local KEY_STYLE = {
+    normal = {
+        letter = { 0.91, 1, 0.95 }, modifier = MINT,
+        outline = { { 0.53, 1, 0.74, 0.97 }, { 0.29, 0.86, 0.55, 0.74 } },
+        rivet = { 0.66, 1, 0.78, 0.95 }, face = { 0.03, 0.073, 0.052, 0.72 }, glow = { 0.31, 1, 0.62 },
+    },
+    bite = {
+        letter = BITE_RED, modifier = BITE_RED,
+        outline = { { 1, 0.29, 0.23, 1 }, { 0.92, 0.09, 0.04, 0.94 } },
+        rivet = { 1, 0.34, 0.27, 0.95 }, face = { 0.19, 0.022, 0.018, 0.86 }, glow = { 1, 0.22, 0.14 },
+    },
+}
 local BAIT_COLORS = {
     ready = { 0.76, 0.91, 0.83 },
     low = { 1, 0.74, 0.37 },
@@ -147,6 +161,18 @@ local function UpdatePromptKey(prompt, binding)
     prompt.keyModifiers:SetShown(modifierText ~= "")
 end
 
+local function UpdateBiteStyle(prompt, biting)
+    local style = biting and KEY_STYLE.bite or KEY_STYLE.normal
+    for index, line in ipairs(prompt.keyOutline) do
+        line:SetColorTexture(unpack(style.outline[(index >= 3 and index <= 6) and 2 or 1]))
+    end
+    for _, rivet in ipairs(prompt.keyRivets) do rivet:SetColorTexture(unpack(style.rivet)) end
+    prompt.keyLetter:SetTextColor(unpack(style.letter))
+    prompt.keyModifiers:SetTextColor(unpack(style.modifier))
+    prompt.keyFace:SetColorTexture(unpack(style.face))
+    prompt.smokeGlow:SetVertexColor(unpack(style.glow))
+end
+
 function W:RefreshPrompt()
     if not F.db then return end
     local prompt = self.prompt
@@ -157,10 +183,12 @@ function W:RefreshPrompt()
             prompt.binding = binding
             UpdatePromptKey(prompt, binding)
         end
-        if prompt.mode ~= mode then
-            prompt.mode = mode
-            prompt.action:SetText(mode == "reel" and "Reel at splash" or "Cast line")
-            prompt.action:SetTextColor(unpack(mode == "reel" and MINT or { 0.95, 0.99, 0.97 }))
+        local biting = mode == "reel" and F.BiteDetector ~= nil and F.BiteDetector:IsBite() == true
+        if prompt.mode ~= mode or prompt.biting ~= biting then
+            if prompt.biting ~= biting then UpdateBiteStyle(prompt, biting) end
+            prompt.mode, prompt.biting = mode, biting
+            prompt.action:SetText(biting and "Reel now" or (mode == "reel" and "Reel at splash" or "Cast line"))
+            prompt.action:SetTextColor(unpack(biting and BITE_RED or (mode == "reel" and MINT or CAST_TEXT)))
         end
         if prompt.baitText ~= self.baitText then
             prompt.baitText = self.baitText
@@ -238,6 +266,7 @@ local function CutOutline(parent, x, y, width, height, cut, thickness, colors, a
         { x + width - cut, y }, { x + cut, y },
         { x, y + cut }, { x, y + height - cut },
     }
+    local lines = {}
     for i, point in ipairs(points) do
         local nextPoint = points[i % #points + 1]
         local line = parent:CreateLine(nil, "ARTWORK")
@@ -246,7 +275,9 @@ local function CutOutline(parent, x, y, width, height, cut, thickness, colors, a
         line:SetThickness(thickness)
         line:SetColorTexture(unpack(colors[(i >= 3 and i <= 6) and 2 or 1]))
         if additive then line:SetBlendMode("ADD") end
+        lines[i] = line
     end
+    return lines
 end
 
 local function Metal(parent, x, y, width, height, cut)
@@ -309,7 +340,7 @@ function W:CreatePrompt()
 
     Metal(prompt, 36, 7, 147, 42, 6)
     Rect(prompt, "BORDER", 59, 11, 110, 1, 0.17, 0.35, 0.25, 0.53)
-    prompt.action = PromptText(prompt, 14, { 0.95, 0.99, 0.97 })
+    prompt.action = PromptText(prompt, 14, CAST_TEXT)
     prompt.bait = PromptText(prompt, 11, BAIT_COLORS.ready)
     prompt.bait:SetPoint("LEFT", 68, -9)
     prompt.baitMark = Rect(prompt, "ARTWORK", 59, 17, 4, 4, 1, 1, 1, 1)
@@ -320,38 +351,39 @@ function W:CreatePrompt()
     key:SetSize(51, 52)
     key:EnableMouse(false)
 
-    local smokeGlow = AddSmoke(prompt, key, "PromptSmoke.tga", 156, 156, 4, 0, 0.40)
+    prompt.smokeGlow = AddSmoke(prompt, key, "PromptSmoke.tga", 156, 156, 4, 0, 0.40)
 
     Metal(key, 1, 2, 49, 48, 9)
     CutOutline(key, 5, 6, 41, 40, 6, 1, {
         { 0.38, 0.79, 0.56, 0.83 }, { 0.17, 0.36, 0.25, 0.88 },
     })
-    Rect(key, "BORDER", 10, 11, 31, 30, 0.03, 0.073, 0.052, 0.72)
+    local keyStyle = KEY_STYLE.normal
+    prompt.keyFace = Rect(key, "BORDER", 10, 11, 31, 30, unpack(keyStyle.face))
     Rect(key, "BORDER", 12, 39, 27, 1, 0.18, 0.36, 0.25, 0.7)
-    prompt.keyLetter = PromptText(key, 28, { 0.91, 1, 0.95 })
+    prompt.keyLetter = PromptText(key, 28, keyStyle.letter)
     prompt.keyLetter:SetJustifyH("CENTER")
     prompt.keyLetter:SetWidth(38)
     prompt.keyLetter:SetWordWrap(true)
     prompt.keyLetter:SetNonSpaceWrap(true)
     prompt.keyLetter:SetMaxLines(3)
-    prompt.keyModifiers = PromptText(key, 8, MINT)
+    prompt.keyModifiers = PromptText(key, 8, keyStyle.modifier)
     prompt.keyModifiers:SetPoint("CENTER", 0, 13)
 
     local aura = CreateFrame("Frame", nil, key)
     aura:SetAllPoints(key)
     aura:EnableMouse(false)
-    CutOutline(aura, 2, 3, 47, 46, 8, 1.3, {
-        { 0.53, 1, 0.74, 0.97 }, { 0.29, 0.86, 0.55, 0.74 },
-    }, true)
+    prompt.keyOutline = CutOutline(aura, 2, 3, 47, 46, 8, 1.3, keyStyle.outline, true)
+    prompt.keyRivets = {}
     for _, x in ipairs({ 8, 43 }) do
-        local rivet = Rect(aura, "OVERLAY", x - 1.5, 25, 3, 3, 0.66, 1, 0.78, 0.95)
+        local rivet = Rect(aura, "OVERLAY", x - 1.5, 25, 3, 3, unpack(keyStyle.rivet))
         rivet:SetRotation(math.pi / 4)
         rivet:SetBlendMode("ADD")
+        prompt.keyRivets[#prompt.keyRivets + 1] = rivet
     end
     local pulse = prompt:CreateAnimationGroup()
     pulse:SetLooping("BOUNCE")
     PulseAlpha(pulse, aura, 0.46, 1, 1.45)
-    PulseAlpha(pulse, smokeGlow, 0.18, 0.65, 1.45)
+    PulseAlpha(pulse, prompt.smokeGlow, 0.18, 0.65, 1.45)
     prompt:SetScript("OnShow", function() pulse:Play() end)
     prompt:SetScript("OnHide", function() pulse:Stop() end)
     for _, event in ipairs({ "PLAYER_MOUNT_DISPLAY_CHANGED", "PLAYER_DEAD", "PLAYER_ALIVE", "PLAYER_UNGHOST" }) do
