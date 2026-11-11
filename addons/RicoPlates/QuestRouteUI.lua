@@ -1,4 +1,4 @@
--- Explicit quest selection; the route provider owns terrain routing and drawing.
+-- Quest route controls. The route provider owns terrain routing and drawing.
 local _, RP = ...
 local T = RP.Theme
 local U = { rows = {}, page = 1 }
@@ -10,13 +10,6 @@ local function Number(value)
 end
 local function String(value)
     return RP.Readable(value) and type(value) == "string" and value or ""
-end
-local function Table(value)
-    return RP.Readable(value) and type(value) == "table" and (not canaccesstable or canaccesstable(value))
-end
-local function Call(fn, ...)
-    if type(fn) ~= "function" then return false end
-    return pcall(fn, ...)
 end
 local function Text(parent, value, size, color)
     local fs = (parent.ricoForeground or parent):CreateFontString(nil, "OVERLAY")
@@ -30,26 +23,6 @@ local function Button(parent, label, width, callback)
     button.label = Text(button, label); button.label:SetPoint("CENTER")
     button:SetScript("OnClick", callback); T:Button(button, button.background)
     return button
-end
-
-function U:GetQuests()
-    local entries, seen = {}, {}
-    local api = C_QuestLog
-    local ok, count = Call(api and api.GetNumQuestLogEntries)
-    if not ok or not Number(count) then return entries end
-    for index = 1, math.min(250, math.floor(count)) do
-        local got, info = Call(api.GetInfo, index)
-        if got and Table(info) and RP.Readable(info.isHeader) and not info.isHeader
-            and RP.Readable(info.isHidden) and not info.isHidden and Number(info.questID)
-            and not seen[info.questID] then
-            local title = String(info.title)
-            if title ~= "" then
-                seen[info.questID] = true
-                entries[#entries + 1] = { id = info.questID, title = title }
-            end
-        end
-    end
-    return entries
 end
 
 function U:StartSelected()
@@ -70,9 +43,10 @@ function U:Stop()
     self:RefreshStatus()
 end
 
-function U:StartMapPin()
-    if RP.QuestRoutes and RP.QuestRoutes.StartMapPin then
-        local ok, message = RP.QuestRoutes:StartMapPin()
+function U:RouteAction(method)
+    local routes = RP.QuestRoutes
+    if routes and routes[method] then
+        local ok, message = routes[method](routes)
         self.notice = not ok and message or nil
     else self.notice = "The walking-route provider is unavailable." end
     self:RefreshStatus()
@@ -109,7 +83,7 @@ function U:Build()
     if self.frame then return end
     local frame = CreateFrame("Frame", "RicoPlatesQuestRoutes", UIParent)
     self.frame = frame
-    frame:SetSize(760, 580); frame:SetPoint("CENTER"); frame:SetFrameStrata("DIALOG")
+    frame:SetSize(760, 626); frame:SetPoint("CENTER"); frame:SetFrameStrata("DIALOG")
     frame:SetClampedToScreen(true); frame:EnableMouse(true); frame:SetMovable(true); frame:RegisterForDrag("LeftButton")
     frame:SetScript("OnDragStart", function(self) self:StartMoving() end)
     frame:SetScript("OnDragStop", function(self) self:StopMovingOrSizing() end)
@@ -122,11 +96,19 @@ function U:Build()
     self.closeButton:SetPoint("TOPRIGHT", -24, -29)
     self.status = Text(frame, "", 11, T.colors.mint)
     self.status:SetPoint("TOPLEFT", 24, -87); self.status:SetWidth(712); self.status:SetHeight(40); self.status:SetJustifyV("TOP")
-    local heading = Text(frame, "Choose a quest from your quest log", 12)
-    heading:SetPoint("TOPLEFT", 24, -134)
+    self.nearestButton = Button(frame, "Nearest quest", 152, function() U:RouteAction("StartNearest") end)
+    self.nearestButton:SetPoint("TOPLEFT", 24, -132)
+    self.circuitButton = Button(frame, "Start quest circuit", 164, function() U:RouteAction("StartCircuit") end)
+    self.circuitButton:SetPoint("LEFT", self.nearestButton, "RIGHT", 12, 0)
+    self.skipButton = Button(frame, "Skip quest", 116, function() U:RouteAction("SkipQuest") end)
+    self.skipButton:SetPoint("LEFT", self.circuitButton, "RIGHT", 12, 0)
+    local heading = Text(frame, "Active quests", 12)
+    heading:SetPoint("TOPLEFT", 24, -180)
+    self.circuitProgress = Text(frame, "", 11, T.colors.muted)
+    self.circuitProgress:SetPoint("TOPRIGHT", -24, -181)
     for index = 1, 8 do
         local row = CreateFrame("Button", nil, frame)
-        row:SetSize(712, 30); row:SetPoint("TOPLEFT", 24, -156 - (index - 1) * 34)
+        row:SetSize(712, 30); row:SetPoint("TOPLEFT", 24, -202 - (index - 1) * 34)
         row.background = T:Panel(row); T:Row(row, false, false)
         row.title = Text(row, "", 12); row.title:SetPoint("LEFT", 10, 0); row.title:SetWidth(595); row.title:SetWordWrap(false)
         row.ident = Text(row, "", 10, T.colors.muted); row.ident:SetPoint("RIGHT", -10, 0)
@@ -136,17 +118,17 @@ function U:Build()
         self.rows[index] = row
     end
     self.empty = Text(frame, "Your quest log has no readable active quests.", 12, T.colors.muted)
-    self.empty:SetPoint("TOPLEFT", 40, -179); self.empty:SetWidth(675)
+    self.empty:SetPoint("TOPLEFT", 40, -225); self.empty:SetWidth(675)
     self.prevButton = Button(frame, "Previous", 85, function() U.page = math.max(1, U.page - 1); U:Refresh() end)
-    self.prevButton:SetPoint("TOPLEFT", 24, -436)
+    self.prevButton:SetPoint("TOPLEFT", 24, -482)
     self.nextButton = Button(frame, "Next", 85, function() U.page = U.page + 1; U:Refresh() end)
-    self.nextButton:SetPoint("TOPRIGHT", -24, -436)
-    self.pageText = Text(frame, "", 10, T.colors.muted); self.pageText:SetPoint("TOP", 0, -445)
+    self.nextButton:SetPoint("TOPRIGHT", -24, -482)
+    self.pageText = Text(frame, "", 10, T.colors.muted); self.pageText:SetPoint("TOP", 0, -491)
     self.selection = Text(frame, "", 11)
-    self.selection:SetPoint("TOPLEFT", 24, -478); self.selection:SetWidth(712); self.selection:SetHeight(35); self.selection:SetJustifyV("TOP")
+    self.selection:SetPoint("TOPLEFT", 24, -524); self.selection:SetWidth(712); self.selection:SetHeight(35); self.selection:SetJustifyV("TOP")
     self.startButton = Button(frame, "Navigate selected quest", 195, function() U:StartSelected() end)
     self.startButton:SetPoint("BOTTOMLEFT", 24, 27)
-    self.pinButton = Button(frame, "Navigate map pin", 180, function() U:StartMapPin() end)
+    self.pinButton = Button(frame, "Navigate map pin", 180, function() U:RouteAction("StartMapPin") end)
     self.pinButton:SetPoint("LEFT", self.startButton, "RIGHT", 12, 0)
     self.stopButton = Button(frame, "Stop my route", 155, function() U:Stop() end)
     self.stopButton:SetPoint("LEFT", self.pinButton, "RIGHT", 12, 0)
@@ -168,19 +150,40 @@ end
 
 function U:RefreshStatus()
     if not self.frame or not self.frame:IsShown() then return end
-    local status = RP.QuestRoutes and RP.QuestRoutes:GetStatus() or {}
-    self.status:SetText(String(status.message) ~= "" and status.message or "Walking-route provider is unavailable.")
+    local routes = RP.QuestRoutes
+    local status = routes and routes:GetStatus() or {}
+    local message = String(status.message)
+    if message == "" then message = "Walking-route provider is unavailable." end
+    local title = String(status.title)
+    self.status:SetText(title ~= "" and (title .. "\n" .. message) or message)
+    local circuit = status.circuit == true
+    local progress = ""
+    if circuit then
+        progress = Number(status.circuitIndex) and ("Stop " .. status.circuitIndex .. " · ") or ""
+        progress = progress .. (tonumber(status.circuitCompleted) or 0) .. " turned in"
+        if type(status.circuitRemaining) == "number" then
+            progress = progress .. " · " .. status.circuitRemaining .. " remaining"
+        end
+    end
+    self.circuitProgress:SetText(progress)
     local selected
     for _, quest in ipairs(self.quests or {}) do if quest.id == self.selectedID then selected = quest end end
     self.selection:SetText(self.notice or (selected and ("Selected: " .. selected.title) or "Select a quest, then choose Navigate selected quest."))
-    self.startButton:SetEnabled(selected ~= nil and status.ready == true)
-    self.pinButton:SetEnabled(status.ready == true)
+    local ready = status.ready == true
+    local hasQuests = self.quests and #self.quests > 0
+    self.nearestButton:SetEnabled(ready and hasQuests and type(routes.StartNearest) == "function")
+    self.circuitButton:SetEnabled(ready and hasQuests and not circuit and type(routes.StartCircuit) == "function")
+    self.skipButton:SetShown(circuit)
+    self.skipButton:SetEnabled(ready and circuit and status.active == true and status.canSkip ~= false and type(routes.SkipQuest) == "function")
+    self.startButton:SetEnabled(selected ~= nil and ready)
+    self.pinButton:SetEnabled(ready)
     self.stopButton:SetEnabled(status.active == true or Number(status.activeQuestID))
 end
 
 function U:Refresh()
     if not self.frame or not self.frame:IsShown() then return end
-    self.quests = self:GetQuests()
+    local routes = RP.QuestRoutes
+    self.quests = routes and routes.GetActiveQuests and routes:GetActiveQuests() or {}
     local pages = math.max(1, math.ceil(#self.quests / 8))
     self.page = math.max(1, math.min(self.page, pages))
     for index, row in ipairs(self.rows) do
