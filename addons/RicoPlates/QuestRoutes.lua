@@ -31,6 +31,15 @@ local function Point(map, x, y)
 end
 local function Enabled() return RP.db and RP.db.enabled ~= false and RP.db.questRoutes ~= false end
 
+local function Coordinates(position)
+    local x, y = Field(position, "x"), Field(position, "y")
+    if Number(x) and Number(y) then return x, y end
+    local method = Field(position, "GetXY")
+    if type(method) ~= "function" then return end
+    local ok, px, py = pcall(method, position)
+    if ok and Number(px) and Number(py) then return px, py end
+end
+
 function Q:Provider()
     local provider = rawget(_G, "ShortestPathForever")
     local api, bridge = Field(provider, "API"), Field(provider, "RicoRoutes")
@@ -302,35 +311,46 @@ function Q:StartQuest(questID)
     return started, message
 end
 
-function Q:StartMapPin()
-    if not Enabled() then return false, "Enable quest routes in RicoPlates settings first." end
-    if Combat() then return false, "Finish combat before planning a map-pin route." end
+local function PointRouteProvider(self, combatMessage, busyMessage)
+    if not Enabled() then return nil, "Enable quest routes in RicoPlates settings first." end
+    if Combat() then return nil, combatMessage end
     local api, bridge, reason = self:Provider()
-    if not api then return false, reason end
+    if not api then return nil, reason end
     local active = ProviderRead("Active", api.Active)
-    if type(active) ~= "boolean" then return false, "The navigation provider's ownership state is unavailable." end
+    if type(active) ~= "boolean" then return nil, "The navigation provider's ownership state is unavailable." end
     if Read(bridge.CanStart, self.owner) ~= true or (active and not Read(api.CurrentStop, self.owner)) then
-        return false, "Another journey is active. Stop it before navigating to this map pin."
+        return nil, busyMessage
     end
-    local pin = Read(C_Map and C_Map.GetUserWaypoint)
-    local position = Field(pin, "position")
-    local x, y, map = Field(position, "x"), Field(position, "y"), Field(pin, "uiMapID")
-    if position and (not Number(x) or not Number(y)) then
-        local method = Field(position, "GetXY")
-        if type(method) == "function" then
-            local ok, px, py = pcall(method, position)
-            if ok and Number(px) and Number(py) then x, y = px, py end
-        end
-    end
-    if not Point(map, x, y) then return false, "Place a map pin first. No pin was assigned to a quest." end
-    local point = {map=map,x=x,y=y,title="Map pin",source="Map pin"}
-    if ProviderRead("NavigateRoute", api.NavigateRoute, self.owner, {{map=map,x=x,y=y,title=point.title}}) ~= true then
-        return false, "The navigation provider refused this map pin. No route was started."
-    end
-    self.active, self.activeQuestID, self.destination = true, nil, point
-    self.state, self.message = "searching", "Checking walkable terrain to your map pin…"
+    return api
+end
+
+local function StartPointRoute(self, api, point, progressMessage, refusedMessage)
+    if not NavigateTo(self, api, nil, point, progressMessage) then return false, refusedMessage end
     self:ClearQuestPlan()
     return true, self.message
+end
+
+function Q:StartMapPin()
+    local api, message = PointRouteProvider(self, "Finish combat before planning a map-pin route.",
+        "Another journey is active. Stop it before navigating to this map pin.")
+    if not api then return false, message end
+    local pin = Read(C_Map and C_Map.GetUserWaypoint)
+    local x, y = Coordinates(Field(pin, "position"))
+    local map = Field(pin, "uiMapID")
+    if not Point(map, x, y) then return false, "Place a map pin first. No pin was assigned to a quest." end
+    local point = {map=map,x=x,y=y,title="Map pin",source="Map pin"}
+    return StartPointRoute(self, api, point, "Checking walkable terrain to your map pin…",
+        "The navigation provider refused this map pin. No route was started.")
+end
+
+function Q:StartFishingSpot(map, x, y, title)
+    if not Point(map, x, y) then return false, "This fishing spot has no usable map coordinates." end
+    local api, message = PointRouteProvider(self, "Finish combat before planning a fishing route.",
+        "Another journey is active. Stop it before navigating to this fishing spot.")
+    if not api then return false, message end
+    local point = {map=map,x=x,y=y,title=String(title) and title ~= "" and title or "Fishing spot",source="Fishing spot"}
+    return StartPointRoute(self, api, point, "Checking walkable terrain to this fishing spot…",
+        "The navigation provider refused this fishing spot. No route was started.")
 end
 
 function Q:Stop()
@@ -371,23 +391,16 @@ function Q:GetStatus()
             return {ready=false,state="restricted",message="The navigation quality status is unavailable."}
         end
         local ended = Read(api.Ended, self.owner)
+        local fishing = self.destination and self.destination.source == "Fishing spot"
         self.active, self.activeQuestID, self.destination = false, nil, nil
-        self.state, self.message = "idle", ended == "arrived" and "Quest destination reached." or "RicoPlates no longer owns the active route."
+        self.state, self.message = "idle", ended == "arrived" and (fishing and "Fishing spot reached." or "Quest destination reached.")
+            or "RicoPlates no longer owns the active route."
     end
     return {ready=true,state=self.state,message=self.message,active=self.active==true,activeQuestID=self.activeQuestID}
 end
 
 function Q:UpdateSettings()
     if not Enabled() then self:Stop() end
-end
-
-local function Coordinates(position)
-    local x, y = Field(position, "x"), Field(position, "y")
-    if Number(x) and Number(y) then return x, y end
-    local method = Field(position, "GetXY")
-    if type(method) ~= "function" then return end
-    local ok, px, py = pcall(method, position)
-    if ok and Number(px) and Number(py) then return px, py end
 end
 
 local function WorldPoint(map, x, y)

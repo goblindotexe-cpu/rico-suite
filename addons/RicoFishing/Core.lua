@@ -1,8 +1,8 @@
 local addonName, F = ...
 _G.RicoFishing = F
-F.name, F.version = addonName, "1.9.1"
+F.name, F.version = addonName, "1.10.0"
 F.session = { items = {}, quantity = 0, loots = 0 }
-F.defaults = { selected = 6291, goal = 20, pins = true, reportedPins = false, hud = true, oneKey = true, fishingKey = "F",
+F.defaults = { selected = 6291, goal = 20, pins = true, hud = true, oneKey = true, fishingKey = "F",
     lureTimer = true, bagWarning = true, favoriteAlerts = true, fishingPrompt = true, recentCatches = true, hudX = 0, hudY = 165 }
 
 function F.IsSecret(value) return issecretvalue and issecretvalue(value) or false end
@@ -95,7 +95,7 @@ function F:SetOption(key, value)
     if type(self.defaults[key]) ~= "boolean" or type(value) ~= "boolean" then return false end
     self.db[key] = value
     if key == "oneKey" and self.OneKey then self.OneKey:Update() end
-    if self.Map then self.Map:Refresh() end
+    if self.Map and key == "pins" then self.Map:Refresh() end
     self:Refresh()
     return true
 end

@@ -442,7 +442,7 @@ function U:Build()
     self.sessionText:SetWordWrap(true)
     local locations = Text(frame, 14)
     locations:SetPoint("TOPLEFT", 351, -330)
-    locations:SetText("Fishing areas")
+    locations:SetText("Fishing spots")
     local backLoc = Button(frame, "<", 25, 23, function() U.locationPage = math.max(1, U.locationPage - 1); U:Refresh() end)
     backLoc:SetPoint("TOPRIGHT", -63, -325)
     local nextLoc = Button(frame, ">", 25, 23, function() U.locationPage = U.locationPage + 1; U:Refresh() end)
@@ -458,33 +458,55 @@ function U:Build()
         T:Panel(row)
         row.name = Text(row, 11)
         row.name:SetPoint("TOPLEFT", 8, -6)
-        row.name:SetWidth(348)
+        row.name:SetWidth(326)
         row.name:SetWordWrap(false)
         row.status = Text(row, 10, COLORS.muted)
         row.status:SetPoint("BOTTOMLEFT", 8, 6)
-        row.status:SetWidth(348)
+        row.status:SetWidth(326)
         row.status:SetWordWrap(false)
-        row.open = Button(row, "Map", 50, 26, function()
+        row.open = Button(row, "Map", 43, 26, function()
             if row.location then F.Map:OpenZone(row.location) end
         end)
-        row.open:SetPoint("RIGHT", -65, 0)
-        row.follow = Button(row, "Track", 50, 26, function()
+        row.open:SetPoint("RIGHT", -105, 0)
+        row.follow = Button(row, "Pin", 43, 26, function()
             if row.location then F.Map:SetWaypoint(F:GetEntry(F.db.selected), row.location, row.x, row.y) end
         end)
-        row.follow:SetPoint("RIGHT", -7, 0)
+        row.follow:SetPoint("RIGHT", -56, 0)
+        row.gps = Button(row, "GPS", 43, 26, function()
+            if row.location then F.Map:StartGPS(F:GetEntry(F.db.selected), row.location, row.x, row.y) end
+        end)
+        row.gps:SetPoint("RIGHT", -7, 0)
+        row:EnableMouse(true)
+        row:SetScript("OnEnter", function(self)
+            local location = self.location
+            if not (GameTooltip and location) then return end
+            GameTooltip:SetOwner(self, "ANCHOR_LEFT")
+            GameTooltip:SetText(F:DescribeFishingLocation(location))
+            local rate = F:FormatFishingRate(location)
+            if rate then
+                GameTooltip:AddLine(rate, 0.40, 0.94, 0.67)
+                GameTooltip:AddLine("Share of recorded fishing loot windows with this catch", 0.73, 0.82, 0.79)
+                if location.rate.scope == "zone" then GameTooltip:AddLine("Source: Efficient Games / EG Link", 0.73, 0.82, 0.79) end
+            end
+            GameTooltip:Show()
+        end)
+        local function HideTooltip(self)
+            if GameTooltip and GameTooltip:IsOwned(self) then GameTooltip:Hide() end
+        end
+        row:SetScript("OnLeave", HideTooltip)
+        row:SetScript("OnHide", HideTooltip)
         self.locationRows[index] = row
     end
     self.locationStatus = Text(frame, 10, COLORS.muted)
     self.locationStatus:SetPoint("TOPLEFT", 353, -515)
     self.locationStatus:SetWidth(485)
-    self.pinsCheck = Check(frame, "Show map and minimap markers for this catch", "pins", 350, -541)
-    self.reportedCheck = Check(frame, "Include unconfirmed source locations", "reportedPins", 350, -575)
+    self.pinsCheck = Check(frame, "Show fish icons on map and minimap", "pins", 350, -541)
     frame:Hide()
     self.building = false
 end
 
 function U:RefreshLocations(entry)
-    local locations = entry.locations or {}
+    local locations = F:GetFishingLocations(entry)
     local pages = math.max(1, math.ceil(#locations / 3))
     self.locationPage = math.max(1, math.min(pages, self.locationPage))
     for index, row in ipairs(self.locationRows) do
@@ -492,23 +514,23 @@ function U:RefreshLocations(entry)
         row.location = location
         row:SetShown(location ~= nil)
         if location then
-            local x, y = location.x, location.y
-            local first = location.points and location.points[1]
-            if not F.Map:ValidPoint(x, y) and first then x, y = first.x or first[1], first.y or first[2] end
+            local x, y = F:GetFishingPoint(location)
             row.x, row.y = x, y
-            row.name:SetText(location.zone or tostring(location.mapID or "Unknown area"))
-            local label = location.observed and "Catch report (beta)" or "Unconfirmed source location"
-            if F.Map:ValidPoint(x, y) then label = label .. string.format(" • ~%.1f, %.1f", x * 100, y * 100)
-            else label = label .. " • area only" end
+            local point = F.Map:ValidPoint(x, y)
+            local name = location.subzone or location.zone or tostring(location.mapID or "Unknown area")
+            if point then name = name .. ("  •  %.2f, %.2f"):format(x * 100, y * 100) end
+            row.name:SetText(name)
+            local label = F:FormatFishingRate(location) or (F:DescribeFishingLocation(location) .. " • rate unknown")
             row.status:SetText(label)
-            row.status:SetTextColor(unpack(location.observed and COLORS.green or COLORS.amber))
+            row.status:SetTextColor(unpack((location.rate or location.observed) and COLORS.green or COLORS.amber))
             local usable = F.Map:MapUsable(location)
             row.open:SetEnabled(usable)
-            row.follow:SetEnabled(usable and F.Map:Allowed(location) and F.Map:ValidPoint(x, y))
+            row.follow:SetEnabled(usable and point)
+            row.gps:SetEnabled(usable and point and (not F.Map.GPSAvailable or F.Map:GPSAvailable()))
         end
     end
-    self.locationStatus:SetText(#locations > 0 and string.format("Areas %d/%d • markers show fishing areas, not guaranteed spawns", self.locationPage, pages)
-        or "No reliable source area known yet; no location assumed.")
+    self.locationStatus:SetText(#locations > 0 and string.format("Spots %d/%d • catch rates are per fishing loot window", self.locationPage, pages)
+        or "No fishing locations have been recorded for this catch.")
 end
 
 function U:Refresh()
@@ -571,14 +593,15 @@ function U:Refresh()
     self.itemStatus:SetText(entry.observed and "Direct Forever catch report • beta" or "Forever reference • not independently confirmed")
     self.itemStatus:SetTextColor(unpack(entry.observed and COLORS.green or COLORS.amber))
     self.itemNote:SetText(entry.observed and "This catch was reported in the Forever beta and has not been reconfirmed in the release version. Each location has its own source status."
-        or "This fish appears in a Forever reference database. These locations have not all been retested in Forever, so their map markers are off by default.")
+        or "Public catch reports show where this fish has been caught. Available catch rates describe the zone.")
     self.goal:SetText(tostring(F.db.goal))
     UpdateProgress(self.progress, entry)
     local rate = F:GetSessionRate()
     self.sessionText:SetText(string.format("This catch: %d received • session: %d items from %d fishing loot windows%s",
         F.session.items[entry.id] or 0, F.session.quantity, F.session.loots, rate and string.format(" • %.0f items/hour", rate) or ""))
     self:RefreshLocations(entry)
-    for _, check in ipairs({self.hudCheck, self.pinsCheck, self.reportedCheck}) do check:SetChecked(F.db[check.key]) end
+    self.hudCheck:SetChecked(F.db.hud)
+    self.pinsCheck:SetChecked(F.db.pins)
     if self.oneKeyCheck then
         self.oneKeyCheck:SetChecked(F.db.oneKey)
         self.oneKeyStatus:SetText(F.OneKey:GetStatus())

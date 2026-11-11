@@ -4,7 +4,7 @@ Samengesteld: 6 november 2026
 De catalogus bevat 29 verschillende items. Je hoeft zelf niets te vangen om
 deze lijst te vullen. De bewijsstatus staat los van je eigen sessieteller.
 
-Er zijn twee bronlagen, met drie overlappende items:
+Voor items en locaties zijn er twee bronlagen, met drie overlappende items:
 
 1. Zeven items met directe waarnemingen in de Forever-beta.
 2. Vijfentwintig vissen/ingrediënten uit de GatherLite-referentie, afkomstig
@@ -114,6 +114,30 @@ De originele GatherLite-data vallen onder MIT. Zijn recente volledige addon
 bevat daarnaast GPL-navigatiecode; die code, terreinbestanden en afbeeldingen
 zijn niet in RicoFishing opgenomen.
 
+EG LINK / WAARGENOMEN FOREVER-VANGSTPERCENTAGES
+
+Data from Efficient Games (https://efficient.games), licensed under CC BY 4.0.
+https://creativecommons.org/licenses/by/4.0/
+
+CatchRates.lua bevat aangepaste, geaggregeerde cijfers uit de openbare
+EG Link-lootdataset voor WoW Forever. Het gaat om observaties van 9 tot en met
+11 november 2026 uit clientbuilds 1.60.1.70790, 1.60.1.70862 en 1.60.1.70888.
+Per vis en zone is de grootste meting met een gerapporteerde vangst geselecteerd.
+De solo- en groepsvensters van dezelfde build zijn opgeteld. Waarnemingen uit
+verschillende builds zijn niet samengevoegd. Alleen items uit de RicoFishing-
+catalogus zijn opgenomen.
+
+Een percentage is het aantal lootvensters met het item gedeeld door het aantal
+waargenomen vis-lootvensters in de zone. Mislukte worpen zitten niet in de teller.
+EG Link onderscheidt in deze cijfers geen scholen van open water. De cijfers
+gelden voor de hele zone, zonder koppeling tussen een vis en een exact punt.
+De aantallen blijven zichtbaar zodat kleine steekproeven herkenbaar zijn.
+
+Vaste bronrevisie: 3067c6919046428152f2152fa551f44a8c215d79
+https://github.com/JIVESCORP/eg-link-output-wowf/tree/3067c6919046428152f2152fa551f44a8c215d79/data/wowf
+https://github.com/JIVESCORP/eg-link-output-wowf/blob/3067c6919046428152f2152fa551f44a8c215d79/DATASETS.md#loot
+
+
 GEEN BRON VOOR BEVESTIGDE FOREVER-VANGSTEN
 
 SenseOS maakt duidelijk dat zijn itemtooltips uit Forever komen, maar dat
@@ -127,10 +151,11 @@ vanThos Fishing Journal of R.E.E.L.
 
 KAARTPUNTEN EN TELLERS
 
-Een bron met alleen een zone krijgt geen verzonnen punt in het midden van de
-kaart. Een expliciete waypointklik kan de ene bestaande Blizzard-waypoint
-vervangen. Bibliotheekpins gebruiken eigen RicoFishing-frames, niet Questie's
-questframes. Referentiepunten houden hun eigen bronstatus.
+Een pin gebruikt een openbaar vangstpunt voor de geselecteerde vis. Een bron
+met alleen een zone, subzone of geaggregeerd kaartvak krijgt geen pin. Een
+expliciete waypointklik kan de bestaande Blizzard-waypoint vervangen.
+RicoFishing tekent zijn iconen op de wereldkaart en minimap zonder Questie.
+Rico GPS controleert of er een begaanbare route naar het punt is.
 
 Je eigen fishingloot en voorraaddoel vullen niet automatisch ontbrekende
 globale brongegevens in. Voorraad is niet hetzelfde als zelf gevangen:

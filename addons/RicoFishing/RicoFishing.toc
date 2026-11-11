@@ -1,17 +1,18 @@
 ## Interface: 16001
 ## Title: RicoFishing
-## Notes: One-key fishing, recent catches, wanted catch effects, and personal fishing spot comparisons for WoW Forever.
+## Notes: One-key fishing, catch rates, and fishing spot pins with Rico GPS for WoW Forever.
 ## Author: Rico
-## Version: 1.9.1
+## Version: 1.10.0
 ## SavedVariables: RicoFishingDB, RicoSuiteDB
 ## SavedVariablesPerCharacter: RicoFishingLogDB
-## OptionalDeps: Questie
 Data.lua
+CatchRates.lua
 Core.lua
 RicoUI.lua
 OneKey.lua
 SessionLog.lua
 SpotStats.lua
+FishingLocations.lua
 FishingWarnings.lua
 RicoSuite.lua
 RicoLauncher.lua

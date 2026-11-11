@@ -1,6 +1,6 @@
 local addonName, RP = ...
 _G.RicoPlates = RP
-RP.name, RP.version = addonName, "1.29.2"
+RP.name, RP.version = addonName, "1.29.3"
 RP.media = "Interface\\AddOns\\" .. addonName .. "\\Media\\"
 RP.defaults = {
     enabled = true, showFriendlyNPCs = false,
