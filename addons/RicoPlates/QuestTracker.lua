@@ -99,8 +99,8 @@ local function JoinPanels(joined)
     joined = joined == true and Q.body:IsShown()
     if Q.joined == joined then return end
     Q.joined = joined
-    if Q.headerGlow then Q.headerGlow:SetJoinedEdge(joined and "BOTTOM" or nil) end
-    if Q.bodyGlow then Q.bodyGlow:SetJoinedEdge(joined and "TOP" or nil) end
+    if Q.headerGlow then Q.headerGlow:SetBottomFrame(joined and Q.body or nil) end
+    if Q.bodyGlow then Q.bodyGlow:SetSuppressed(joined) end
     Q.body.ricoBorder[1]:SetShown(not joined)
 end
 
