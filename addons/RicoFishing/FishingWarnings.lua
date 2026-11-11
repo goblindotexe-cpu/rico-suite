@@ -125,11 +125,40 @@ local function Tick(_, elapsed)
     W:RefreshPrompt()
 end
 
+local SHORT_MODIFIER = { ALT = "Alt", CTRL = "Ctrl", SHIFT = "Shift", META = "Meta" }
+local KEY_FONT_SIZES = { 28, 19, 14, 11, 9 }
+
+local function UpdatePromptKey(prompt, binding)
+    local base, modifiers = F.OneKey:GetKeyParts(binding)
+    local key = F.OneKey:GetKeyLabel(base)
+    local modifierLabels = {}
+    for _, modifier in ipairs(modifiers) do
+        local label = SHORT_MODIFIER[modifier]
+        modifierLabels[#modifierLabels + 1] = #modifiers > 2 and label:sub(1, 1) or label
+    end
+    local modifierText = table.concat(modifierLabels, "+")
+    local letter = prompt.keyLetter
+    letter:SetText(key)
+    for _, size in ipairs(KEY_FONT_SIZES) do
+        letter:SetFont(F.Theme.font, size, "OUTLINE")
+        if letter:GetUnboundedStringWidth() <= 38 then break end
+    end
+    letter:ClearAllPoints()
+    letter:SetPoint("CENTER", 0, modifierText ~= "" and -5 or 1)
+    prompt.keyModifiers:SetText(modifierText)
+    prompt.keyModifiers:SetShown(modifierText ~= "")
+end
+
 function W:RefreshPrompt()
     if not F.db then return end
     local prompt = self.prompt
     local mode = prompt and PromptMode()
     if mode then
+        local binding = F.db.fishingKey or "F"
+        if prompt.binding ~= binding then
+            prompt.binding = binding
+            UpdatePromptKey(prompt, binding)
+        end
         if prompt.mode ~= mode then
             prompt.mode = mode
             prompt.action:SetText(mode == "reel" and "Reel at splash" or "Cast line")
@@ -194,6 +223,16 @@ local function Rect(parent, layer, x, y, width, height, r, g, b, a)
     return texture
 end
 
+local function CutFill(parent, layer, x, y, width, height, cut, r, g, b)
+    Rect(parent, layer, x, y + cut, width, height - 2 * cut, r, g, b, 1)
+    local top = Rect(parent, layer, x, y + height - cut, width, cut, r, g, b, 1)
+    top:SetVertexOffset(UPPER_LEFT_VERTEX or 1, cut, 0)
+    top:SetVertexOffset(UPPER_RIGHT_VERTEX or 3, -cut, 0)
+    local bottom = Rect(parent, layer, x, y, width, cut, r, g, b, 1)
+    bottom:SetVertexOffset(LOWER_LEFT_VERTEX or 2, cut, 0)
+    bottom:SetVertexOffset(LOWER_RIGHT_VERTEX or 4, -cut, 0)
+end
+
 local function CutOutline(parent, x, y, width, height, cut, thickness, colors, additive)
     local points = {
         { x + cut, y + height }, { x + width - cut, y + height },
@@ -213,8 +252,8 @@ local function CutOutline(parent, x, y, width, height, cut, thickness, colors, a
 end
 
 local function Metal(parent, x, y, width, height, cut)
-    Rect(parent, "BACKGROUND", x + cut, y, width - 2 * cut, height, 0.026, 0.040, 0.035, 0.98)
-    Rect(parent, "BACKGROUND", x, y + cut, width, height - 2 * cut, 0.026, 0.040, 0.035, 0.98)
+    CutFill(parent, "BACKGROUND", x, y, width, height, cut, 0.12, 0.18, 0.15)
+    CutFill(parent, "BORDER", x + 2, y + 2, width - 4, height - 4, cut - 1, 0.025, 0.042, 0.035)
     Rect(parent, "BORDER", x + 3, y + height - cut - 2, width - 6, 2, 0.09, 0.15, 0.12, 0.82)
     Rect(parent, "BORDER", x + 3, y + cut, width - 6, 2, 0.008, 0.016, 0.012, 1)
     CutOutline(parent, x, y, width, height, cut, 2.4, {
@@ -263,9 +302,14 @@ function W:CreatePrompt()
     })
     Rect(key, "BORDER", 10, 11, 31, 30, 0.03, 0.073, 0.052, 0.72)
     Rect(key, "BORDER", 12, 39, 27, 1, 0.18, 0.36, 0.25, 0.7)
-    local letter = PromptText(key, 28, { 0.91, 1, 0.95 })
-    letter:SetPoint("CENTER", 0, 1)
-    letter:SetText("F")
+    prompt.keyLetter = PromptText(key, 28, { 0.91, 1, 0.95 })
+    prompt.keyLetter:SetJustifyH("CENTER")
+    prompt.keyLetter:SetWidth(38)
+    prompt.keyLetter:SetWordWrap(true)
+    prompt.keyLetter:SetNonSpaceWrap(true)
+    prompt.keyLetter:SetMaxLines(3)
+    prompt.keyModifiers = PromptText(key, 8, MINT)
+    prompt.keyModifiers:SetPoint("CENTER", 0, 13)
 
     local aura = CreateFrame("Frame", nil, key)
     aura:SetAllPoints(key)

@@ -1,8 +1,8 @@
 local addonName, F = ...
 _G.RicoFishing = F
-F.name, F.version = addonName, "1.6.0"
+F.name, F.version = addonName, "1.7.0"
 F.session = { items = {}, quantity = 0, loots = 0 }
-F.defaults = { selected = 6291, goal = 20, pins = true, reportedPins = false, hud = true, oneKey = true,
+F.defaults = { selected = 6291, goal = 20, pins = true, reportedPins = false, hud = true, oneKey = true, fishingKey = "F",
     lureTimer = true, bagWarning = true, favoriteAlerts = true, fishingPrompt = true, hudX = 0, hudY = 165 }
 
 function F.IsSecret(value) return issecretvalue and issecretvalue(value) or false end
@@ -52,7 +52,10 @@ function F:GetIcon(id)
 end
 
 function F:Refresh()
-    if self.OneKey and self.OneKey.events and self.OneKey.setting ~= self.db.oneKey then self.OneKey:Update() end
+    if self.OneKey and self.OneKey.events
+        and (self.OneKey.setting ~= self.db.oneKey or self.OneKey.keySetting ~= self.db.fishingKey) then
+        self.OneKey:Update()
+    end
     if self.warningsReady and (self.lureTimerSetting ~= self.db.lureTimer or self.bagWarningSetting ~= self.db.bagWarning) then
         self.lureTimerSetting, self.bagWarningSetting = self.db.lureTimer, self.db.bagWarning
         self.Warnings:RefreshOptions()
@@ -92,6 +95,25 @@ function F:SetOption(key, value)
     self.db[key] = value
     if key == "oneKey" and self.OneKey then self.OneKey:Update() end
     if self.Map then self.Map:Refresh() end
+    self:Refresh()
+    return true
+end
+
+function F:SetFishingKey(value)
+    local binding = self.OneKey
+    if not self.db or not binding then return false, "Fishing keys are unavailable." end
+    if InCombatLockdown and InCombatLockdown() then return false, "Change your fishing key after combat." end
+    local key = binding:NormalizeKey(value)
+    if not key then return false, "Choose a supported key or mouse input." end
+    local previous = self.db.fishingKey
+    if previous == key then return true end
+    if not binding:CanBind(key) then return false, "That key cannot be used for fishing." end
+    self.db.fishingKey = key
+    if binding:Update() == false then
+        self.db.fishingKey = previous
+        binding:Update()
+        return false, "That key cannot be used for fishing."
+    end
     self:Refresh()
     return true
 end
@@ -193,6 +215,9 @@ function F:Initialize()
     self.db = RicoFishingDB
     for key, value in pairs(self.defaults) do
         if type(self.db[key]) ~= type(value) then self.db[key] = value end
+    end
+    if self.OneKey then
+        self.db.fishingKey = self.OneKey:NormalizeKey(self.db.fishingKey) or self.defaults.fishingKey
     end
     if not self:GetEntry(self.db.selected) then self.db.selected = self.Data.order[1] end
     if not self.Number(self.db.goal) then self.db.goal = 20 end

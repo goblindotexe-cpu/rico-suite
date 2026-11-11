@@ -7,10 +7,10 @@
   <meta name="description" content="Rico Suite brings custom nameplates, a loot browser, one-key fishing, mining tools, and a unified inventory to World of Warcraft: Forever.">
   <title>Rico Suite for WoW Forever</title>
   <link rel="icon" href="rico.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="style.css?v=4">
+  <link rel="stylesheet" href="style.css?v=5">
   <script defer src="rico-liquid.js"></script>
   <script defer src="rico-cast-eye.js"></script>
-  <script defer src="rico-preview.js"></script>
+  <script defer src="rico-preview.js?v=5"></script>
 </head>
 <body>
   <header class="site-header">
@@ -35,7 +35,7 @@
           <a class="button primary" href="https://github.com/goblindotexe-cpu/rico-suite/releases/latest/download/RicoSuite-forever.zip">Download for Forever <span aria-hidden="true">↓</span></a>
           <a class="button secondary" href="#install">Installation guide <span aria-hidden="true">↗</span></a>
         </div>
-        <a class="feature-link" href="#changelog">What's new · Fishing prompt and performance <span aria-hidden="true">↓</span></a>
+        <a class="feature-link" href="#changelog">What's new · Name colors and custom fishing keys <span aria-hidden="true">↓</span></a>
       </div>
       <figure class="showcase" aria-labelledby="preview-title">
         <div class="demo-window" data-rico-preview>
@@ -87,18 +87,17 @@
           <div class="addon-top"><span class="index">03</span><code>/rf</code></div>
           <div class="addon-head"><canvas class="header-liquid" width="340" height="36" aria-hidden="true"></canvas><h3>RICO <em>FISHING</em></h3></div>
           <p>Cast and reel in with one key, find fishing spots, and see what you caught in each session.</p>
-          <ul><li>One-Key Fishing on <kbd>F</kbd></li><li>Catch log <code>/rf log</code></li><li>Fishing guide, map tools and goals</li></ul>
+          <ul><li>One-Key Fishing with a customizable key</li><li>Catch log <code>/rf log</code></li><li>Fishing guide, map tools and goals</li></ul>
         </article>
       </div>
     </section>
     <section id="one-key-fishing" class="section shell fishing-feature" aria-labelledby="fishing-title">
       <div>
-        <p class="eyebrow">New in RicoFishing 1.4.0</p>
         <h2 id="fishing-title">One-Key Fishing.</h2>
-        <p class="muted">Equip a fishing pole and use <kbd>F</kbd> for the whole loop. Each cast and reel-in takes its own keypress. Take the pole off to return to your usual F binding.</p>
+        <p class="muted">Equip a fishing pole and use <kbd>F</kbd> for the whole loop. Change the default under <strong>Fishing tools</strong> in <code>/rf</code>. The fishing prompt shows your chosen key, and your normal binding returns when you take off the pole.</p>
         <p class="muted">Open <code>/rf log</code> to see quantities by item in your current session and up to 25 previous sessions for that character.</p>
       </div>
-      <ol class="fishing-flow" aria-label="One-Key Fishing controls">
+      <ol class="fishing-flow" aria-label="One-Key Fishing with the default key">
         <li><kbd>F</kbd><div><strong>Cast your line</strong><span>Stand by fishable water with your pole equipped.</span></div></li>
         <li><kbd>F</kbd><div><strong>Reel in at the splash</strong><span>Press when the bobber splashes. Fishing loot is collected automatically.</span></div></li>
         <li><kbd>F</kbd><div><strong>Cast again</strong><span>Press again for the next catch.</span></div></li>
@@ -113,6 +112,16 @@
       </div>
       <div class="release-list">
         <details class="release" open>
+          <summary><span class="index">v1.5.0</span><strong>Name colors and custom fishing keys</strong></summary>
+          <ul>
+            <li>Player and minion names share a style across Rico nameplate distances. Friendly is mint, hostile is red, and neutral is yellow.</li>
+            <li>Enemy plates fade when your attack is out of range. Player and minion names stay readable.</li>
+            <li>Choose a key, key combination, extra mouse button or scroll direction under <strong>Fishing tools</strong> in <code>/rf</code>. The prompt updates to match.</li>
+            <li>The glowing fishing keycap and status panel now have solid, beveled corners.</li>
+          </ul>
+          <a class="repo-url" href="https://github.com/goblindotexe-cpu/rico-suite/releases/tag/v1.5.0">Release and download <span aria-hidden="true">↗</span></a>
+        </details>
+        <details class="release">
           <summary><span class="index">v1.4.0</span><strong>Fishing prompt and performance</strong></summary>
           <ul>
             <li>One-Key Fishing has a glowing mint F prompt with cast, reel and bait status.</li>

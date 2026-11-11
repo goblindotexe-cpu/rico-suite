@@ -1,6 +1,6 @@
 local addonName, RP = ...
 _G.RicoPlates = RP
-RP.name, RP.version = addonName, "1.23.0"
+RP.name, RP.version = addonName, "1.24.0"
 RP.media = "Interface\\AddOns\\" .. addonName .. "\\Media\\"
 RP.defaults = {
     enabled = true, showFriendlyNPCs = false,
@@ -33,6 +33,7 @@ RP.colors = {
     party = {0.18, 0.55, 1.00}, raid = {1.00, 0.43, 0.13},
     friendly = {0.23, 0.83, 0.58}, friendlyNPC = {0.23, 0.83, 0.58},
     tapped = {0.70, 0.73, 0.77}, trivial = {0.70, 0.73, 0.77},
+    unknown = {0.70, 0.73, 0.77},
 }
 RP.classIcons = {
     WARRIOR = "Interface\\Icons\\ClassIcon_Warrior",
@@ -243,6 +244,9 @@ function RP:ApplyVisibility()
     else
         self:SetOwnedCVar("nameplateShowFriends", "1")
     end
+    -- Minion nameplate anchors are separate from ordinary friendly NPCs.
+    self:SetOwnedCVar("nameplateShowFriendlyPlayerMinions", "1")
+    self:SetOwnedCVar("nameplateShowEnemyMinions", "1")
     self:SetOwnedCVar("nameplateShowFriendlyNPCs", self.db.showFriendlyNPCs and "1" or "0")
     if GetCVarValue("nameplateShowOnlyNameForFriendlyPlayerUnits") ~= nil then
         self:SetOwnedCVar("nameplateShowOnlyNameForFriendlyPlayerUnits", "0")

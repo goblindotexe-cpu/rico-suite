@@ -434,13 +434,14 @@ function U:RefreshVisual(entry, refreshPortrait)
     local unit = entry.unit
     if not Exists(unit) then self:ClearVisuals(entry); return end
     local p = entry.plate
-    local kind, _, isPlayer, baseKind = RP.Plates:Classify(unit)
+    local kind, _, isPlayer, baseKind, relation = RP.Plates:Classify(unit)
     -- HUD visibility follows the selected unit, never the overhead friendly
     -- player/NPC/group filters. The player's own health is consistently green.
-    if unit == "player" then kind, baseKind = "friendly", "friendly" end
+    if unit == "player" then kind, baseKind, relation = "friendly", "friendly", "friendly" end
     p.unit, p.isPlayer, p.baseKind, p.visible = unit, isPlayer, baseKind or kind, true
-    if unit == "target" and not entry.preview and RP.EnemyRange then RP.EnemyRange:Update(p) end
+    p.nameRelation = relation
     RP.Plates:SetColor(p, kind)
+    if unit == "target" and not entry.preview and RP.EnemyRange then RP.EnemyRange:Update(p) end
     RP.Plates:UpdateIdentity(p)
     self:LayoutIcons(entry)
     RP.Plates:UpdateHealth(p)
@@ -633,9 +634,10 @@ function U:RefreshTargetTarget()
     end
     local name = RP:DisplayName("targettarget")
     if RP.IsSecret(name) then entry.name:SetText(name) else entry.name:SetText(name or "Unknown") end
-    local kind = RP.Plates:Classify("targettarget")
+    local kind, _, isPlayer, _, relation = RP.Plates:Classify("targettarget")
+    RP.Plates:PaintNameColor(entry.name, relation)
     local color = RP.colors[kind] or RP.colors.neutral
-    if RP.PublicTrue(UnitIsPlayer("targettarget")) then
+    if isPlayer then
         local _, class = UnitClass("targettarget")
         local classColor = RP.Readable(class) and class and RAID_CLASS_COLORS and RAID_CLASS_COLORS[class]
         if classColor then color = {classColor.r, classColor.g, classColor.b} end

@@ -20,6 +20,35 @@ local function PublicUnitFlag(getter, ...)
     return ok and RP.PublicTrue(value)
 end
 
+local function KnownFaction(unit)
+    if type(UnitFactionGroup) ~= "function" then return end
+    local ok, faction = pcall(UnitFactionGroup, unit)
+    if ok and RP.Readable(faction) and (faction == "Alliance" or faction == "Horde" or faction == "Neutral") then
+        return faction
+    end
+end
+
+local function PlayerHostile(unit)
+    if type(UnitCanAttack) == "function" then
+        local ok, attackable = pcall(UnitCanAttack, "player", unit)
+        if ok and RP.Readable(attackable) and type(attackable) == "boolean" then return attackable end
+        if ok and RP.PublicTrue(attackable) then return true end
+    end
+    return PublicUnitFlag(UnitIsEnemy, "player", unit)
+end
+
+local function PlayerRelation(unit, fallback)
+    if unit == "player" or unit == "pet" then return "friendly" end
+    local faction, ownFaction = KnownFaction(unit), KnownFaction("player")
+    if faction and ownFaction then
+        if faction == "Neutral" or ownFaction == "Neutral" then return "neutral" end
+        if faction ~= ownFaction then return "enemy" end
+    elseif faction == "Neutral" then return "neutral" end
+    if PlayerHostile(unit) then return "enemy" end
+    if (faction and faction == ownFaction) or PublicUnitFlag(UnitIsFriend, "player", unit) then return "friendly" end
+    return fallback
+end
+
 function P:NPCKind(unit, baseKind)
     if baseKind ~= "enemy" and baseKind ~= "neutral" then return baseKind end
     if not RP.db.grayTapped and not RP.db.grayTrivial then return baseKind end
@@ -36,30 +65,32 @@ function P:NPCKind(unit, baseKind)
     return baseKind
 end
 
+local function ClassifyNPC(self, unit)
+    local reaction = UnitReaction(unit, "player")
+    if RP.Readable(reaction) and type(reaction) == "number" then
+        if reaction <= 3 then return self:NPCKind(unit, "enemy"), true, "enemy", "enemy" end
+        if reaction == 4 then return self:NPCKind(unit, "neutral"), true, "neutral", "neutral" end
+        return "friendlyNPC", RP.db.showFriendlyNPCs, nil, "friendly"
+    end
+    if PublicUnitFlag(UnitCanAttack, "player", unit) then return self:NPCKind(unit, "enemy"), true, nil, "enemy" end
+    return "friendlyNPC", RP.db.showFriendlyNPCs
+end
+
 function P:Classify(unit)
     local player = RP.PublicTrue(UnitIsPlayer(unit))
     if player then
         local selected = RP.PublicTrue(UnitIsUnit(unit, "target"))
         local raid = UnitInRaid(unit)
-        if RP.Readable(raid) and raid then return "raid", RP.db.showRaid or selected, true end
-        if RP.PublicTrue(UnitInParty(unit)) then return "party", RP.db.showParty or selected, true end
-        local faction = UnitFactionGroup(unit)
-        local ownFaction = UnitFactionGroup("player")
-        if RP.Readable(faction) and RP.Readable(ownFaction) and faction and ownFaction
-            and faction ~= "Neutral" and ownFaction ~= "Neutral" and faction ~= ownFaction then
-            return "enemy", true, true
-        end
-        if RP.PublicTrue(UnitCanAttack("player", unit)) then return "enemy", true, true end
-        return "friendly", selected, true
+        if RP.Readable(raid) and raid then return "raid", RP.db.showRaid or selected, true, nil, "friendly" end
+        if RP.PublicTrue(UnitInParty(unit)) then return "party", RP.db.showParty or selected, true, nil, "friendly" end
+        local relation = PlayerRelation(unit)
+        if relation == "enemy" then return "enemy", true, true, nil, relation end
+        return relation or "unknown", selected, true, nil, relation
     end
-    local reaction = UnitReaction(unit, "player")
-    if RP.Readable(reaction) and type(reaction) == "number" then
-        if reaction <= 3 then return self:NPCKind(unit, "enemy"), true, false, "enemy" end
-        if reaction == 4 then return self:NPCKind(unit, "neutral"), true, false, "neutral" end
-        return "friendlyNPC", RP.db.showFriendlyNPCs, false
-    end
-    if RP.PublicTrue(UnitCanAttack("player", unit)) then return self:NPCKind(unit, "enemy"), true, false, "enemy" end
-    return "friendlyNPC", RP.db.showFriendlyNPCs, false
+    local kind, visible, baseKind, npcRelation = ClassifyNPC(self, unit)
+    local companion = unit == "pet" or PublicUnitFlag(UnitIsOtherPlayersPet, unit) or PublicUnitFlag(UnitPlayerControlled, unit)
+    local relation = companion and PlayerRelation(unit, npcRelation) or npcRelation
+    return kind, visible, false, baseKind, relation, companion
 end
 
 local function Texture(parent, layer, color)
@@ -408,7 +439,14 @@ local function Distant(p)
         local ok, squared, checked = pcall(UnitDistanceSquared, p.unit)
         if ok and RP.PublicTrue(checked) and RP.Readable(squared)
             and type(squared) == "number" and squared >= 0 and squared < math.huge then
-            return squared > (p.distant and 28 * 28 or 30 * 30)
+            local limit = 30
+            local maxRange = RP.EnemyRange and RP.EnemyRange.maxRange
+            if RP.db.enemyRange ~= false and (p.baseKind == "enemy" or p.baseKind == "neutral")
+                and RP.Readable(maxRange) and type(maxRange) == "number" and maxRange > 0 and maxRange < math.huge then
+                limit = math.max(limit, maxRange + 6)
+            end
+            if p.distant then limit = limit - 2 end
+            return squared > limit * limit
         end
     end
     -- Follow-distance is the available general range check for non-group units.
@@ -959,9 +997,19 @@ function P:PaintFactionIcon(p, faction)
     icon:Show()
 end
 
+local nameColors = {
+    friendly = {0.52, 0.97, 0.76}, enemy = {1.00, 0.45, 0.40}, neutral = {1.00, 0.81, 0.32},
+    unknown = {0.96, 0.98, 1.00},
+}
+
+function P:PaintNameColor(text, relation)
+    text:SetTextColor(unpack(nameColors[relation] or nameColors.unknown))
+end
+
 function P:UpdateName(p)
     local name = RP:DisplayName(p.unit)
     if RP.IsSecret(name) then p.name:SetText(name) else p.name:SetText(name or "…") end
+    self:PaintNameColor(p.name, p.nameRelation)
 end
 
 function P:UpdateIdentity(p)
@@ -1172,7 +1220,7 @@ end
 
 function P:Refresh(p)
     if not RP.db.enabled or not Exists(p.unit) or IsObject(p.unit) then
-        p.visible = false
+        p.visible, p.persistentName = false, false
         if p.nameLayer then p.nameLayer:Hide() end
         if RP.EnemyRange then RP.EnemyRange:Reset(p) end
         if p.targetingEye then p.targetingEye:Hide() end
@@ -1181,19 +1229,21 @@ function P:Refresh(p)
         p:Hide()
         return
     end
-    local kind, visible, player, baseKind = self:Classify(p.unit)
+    local kind, visible, player, baseKind, relation, companion = self:Classify(p.unit)
+    p.baseKind = baseKind or kind
     p.distant = Distant(p)
     visible = visible and not p.distant
-    p.visible, p.isPlayer, p.baseKind = visible, player, baseKind or kind
+    p.visible, p.isPlayer = visible, player
+    p.nameRelation, p.persistentName = relation, player or companion
     self:Layout(p)
     self:SetColor(p, kind)
-    if p.nameLayer then p.nameLayer:SetShown(visible or player) end
+    if p.nameLayer then p.nameLayer:SetShown(visible or p.persistentName) end
     if RP.EnemyRange then RP.EnemyRange:Update(p) end
     if self.targetEyeTicker then self.targetEyeTicker:Show() end
     local questInfo
     if RP.Quest and RP.db.questMarkers and not player then questInfo = RP.Quest:GetUnitInfo(p.unit) end
     if not visible then
-        if player then self:UpdateName(p) end
+        if p.persistentName then self:UpdateName(p) end
         p:Hide()
         self:PaintQuest(p, questInfo)
         self:UpdateTargetingEye(p)
@@ -1289,6 +1339,7 @@ function P:Detach(unit)
     p.quest:Hide(); p.cast:Hide(); p.power:Hide(); p.power.text:SetText(""); p.power:SetAlpha(1)
     p.classIcon:Hide(); p.factionIcon:Hide(); p.raidIcon:Hide()
     p.unit, p.visible, p.isPlayer, p.hasPower = nil, false, false, false
+    p.nameRelation, p.persistentName = nil, nil
     p.castVisible, p.distant, p.baseKind = false, false, nil
     p.endedCastBarID = nil
     if RP.Quest then RP.Quest:Forget(unit) end
@@ -1316,6 +1367,9 @@ function P:UpdateDemo(p, data)
     local kind = data.kind
     if kind == "tapped" and not RP.db.grayTapped then kind = data.baseKind or "enemy" end
     if kind == "trivial" and not RP.db.grayTrivial then kind = data.baseKind or "enemy" end
+    local relation = data.baseKind or kind
+    if relation == "party" or relation == "raid" or relation == "friendlyNPC" then relation = "friendly" end
+    self:PaintNameColor(p.name, relation)
     self:SetColor(p, kind)
     p.health:SetMinMaxValues(0, data.max)
     p.health:SetValue(data.hp)
@@ -1456,7 +1510,7 @@ function P:Initialize()
         if not p then return end
         if event == "UNIT_FACTION" or event == "UNIT_FLAGS" or event == "UNIT_LEVEL" then P:Refresh(p); return end
         if not p.visible then
-            if p.isPlayer and (event == "UNIT_NAME_UPDATE" or event == "UNIT_GUILD_UPDATE") then P:UpdateName(p) end
+            if p.persistentName and (event == "UNIT_NAME_UPDATE" or event == "UNIT_GUILD_UPDATE") then P:UpdateName(p) end
             return
         end
         if event == "UNIT_HEALTH" or event == "UNIT_MAXHEALTH" then P:UpdateHealth(p)

@@ -4,7 +4,6 @@
   const preview = document.querySelector("[data-rico-preview]");
   if (!preview || !window.RicoLiquid || !window.RicoCastEye) return;
 
-  const scene = preview.querySelector(".demo-scene");
   const plate = preview.querySelector(".unit-plate");
   const health = preview.querySelector(".health canvas");
   const cast = preview.querySelector(".cast-bar");
@@ -20,7 +19,7 @@
   const healthOptions = { tint: [0.95, 0.16, 0.12], fill: 185 / 208, health: true };
   const duration = 4200;
   let ready = true;
-  let distant = false;
+  let outOfRange = false;
   let paused = false;
   let now = 0;
   let castStart = null;
@@ -40,7 +39,7 @@
   function paintCast() {
     const casting = castStart !== null;
     const progress = casting ? Math.min(1, (now - castStart) / duration) : 0;
-    const canInterrupt = ready && !distant;
+    const canInterrupt = ready && !outOfRange;
     cast.hidden = !casting;
     cast.classList.toggle("is-ready", casting && canInterrupt);
     cast.style.setProperty("--cast-progress", progress);
@@ -58,13 +57,13 @@
   function announce(finished = false) {
     let message;
     if (castStart !== null) {
-      message = distant ? "Shadow Bolt is aimed at you. Out of interrupt range."
+      message = outOfRange ? "Shadow Bolt is aimed at you. Out of interrupt range."
         : ready ? "Shadow Bolt is aimed at you. Interrupt ready."
           : "Shadow Bolt is aimed at you. Your interrupt is unavailable.";
     } else if (finished) {
       message = "Shadow Bolt finished. Moonrage Whitescalp is still targeting you.";
     } else {
-      message = distant ? "Only the targeting eye is visible at this distance."
+      message = outOfRange ? "Moonrage Whitescalp is targeting you. The health bar dims out of attack range."
         : "Moonrage Whitescalp is targeting you.";
     }
     if (status.textContent !== message) status.textContent = message;
@@ -85,7 +84,7 @@
     last = timestamp;
     if (!reduced.matches && now - lastLiquid >= 1000 / 24) {
       visibleHeaders.forEach(paintHeader);
-      if (!distant) liquid(health, now / 1000, healthOptions);
+      liquid(health, now / 1000, healthOptions);
       lastLiquid = now;
     }
     if (castStart !== null) {
@@ -127,11 +126,9 @@
     announce();
   });
   distance.addEventListener("click", () => {
-    distant = !distant;
-    distance.setAttribute("aria-pressed", String(distant));
-    plate.hidden = distant;
-    scene.classList.toggle("is-distant", distant);
-    if (!distant) liquid(health, now / 1000, healthOptions);
+    outOfRange = !outOfRange;
+    distance.setAttribute("aria-pressed", String(outOfRange));
+    plate.classList.toggle("is-out-of-range", outOfRange);
     paintCast();
     announce();
   });

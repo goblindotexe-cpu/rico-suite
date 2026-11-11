@@ -104,6 +104,124 @@ end
 function U:RefreshTools()
     if not self.tools or not self.tools:IsShown() then return end
     for _, check in ipairs(self.toolChecks) do check:SetChecked(F.db[check.key]) end
+    if not self.keyButton then return end
+    local label = F.OneKey:GetKeyLabel()
+    if self.capturingKey then
+        label = "Press a key…"
+        if self.pendingKey then label = self.pendingKey.binding and "Release to bind…" or "Canceling…" end
+    end
+    self.keyButton.label:SetText(label)
+    local hint = self.keyMessage
+    if self.capturingKey then
+        hint = "Hold modifiers first. Middle/extra mouse buttons and wheel work over this field. Esc cancels."
+    end
+    self.keyHint:SetText(hint or "This shortcut takes over while you hold a fishing pole outside combat.")
+end
+
+function U:StopKeyCapture(message)
+    if self.capturingKey then
+        self.capturingKey, self.pendingKey = nil, nil
+        local capture = self.keyCapture
+        capture:EnableKeyboard(false)
+        capture:Hide()
+    end
+    self.keyMessage = message
+    self:RefreshTools()
+end
+
+function U:StartKeyCapture()
+    if self.capturingKey then self:StopKeyCapture(); return end
+    if InCombatLockdown and InCombatLockdown() then
+        self:StopKeyCapture("Change your fishing key after combat.")
+        return
+    end
+    local capture = self.keyCapture
+    if not capture then return end
+    local read, focus = F.Call(GetCurrentKeyBoardFocus)
+    if read and not F.IsSecret(focus) and focus and type(focus.ClearFocus) == "function" then focus:ClearFocus() end
+    self.capturingKey, self.keyMessage = true, nil
+    capture:Show()
+    capture:EnableKeyboard(true)
+    capture:SetPropagateKeyboardInput(false)
+    self:RefreshTools()
+end
+
+function U:SaveFishingKey(key)
+    self:StopKeyCapture()
+    local ok, message = F:SetFishingKey(key)
+    if not ok then self.keyMessage = message end
+    self:RefreshTools()
+end
+
+function U:BuildFishingKeyControls(panel)
+    local label = Text(panel, 12, COLORS.mint)
+    label:SetPoint("TOPLEFT", 26, -216)
+    label:SetText("Fishing key")
+    self.keyButton = Button(panel, "", 170, 27, function() U:StartKeyCapture() end)
+    self.keyButton:SetPoint("TOPLEFT", 24, -235)
+    self.keyButton.label:SetWidth(162)
+    self.keyButton.label:SetJustifyH("CENTER")
+    self.keyButton.label:SetWordWrap(false)
+    local clear = Button(panel, "Clear", 62, 27, function() U:SaveFishingKey("") end)
+    clear:SetPoint("LEFT", self.keyButton, "RIGHT", 8, 0)
+    local reset = Button(panel, "Reset to F", 84, 27, function() U:SaveFishingKey(F.defaults.fishingKey) end)
+    reset:SetPoint("LEFT", clear, "RIGHT", 8, 0)
+    self.keyHint = Text(panel, 10, COLORS.muted)
+    self.keyHint:SetPoint("TOPLEFT", 26, -276)
+    self.keyHint:SetWidth(356)
+    self.keyHint:SetWordWrap(true)
+
+    local capture = CreateFrame("Frame", nil, panel)
+    self.keyCapture = capture
+    capture:SetAllPoints(self.keyButton)
+    capture:SetFrameLevel(self.keyButton:GetFrameLevel() + 1)
+    capture:EnableMouse(true)
+    capture:EnableMouseWheel(true)
+    capture:Hide()
+    local function StartInput(_, input)
+        if not U.capturingKey or not F.PublicString(input) then return end
+        if input == "ESCAPE" then
+            U.pendingKey = { input = input }
+        elseif not U.pendingKey then
+            local key = F.OneKey:CaptureKey(input)
+            if key then U.pendingKey = { input = input, binding = key } end
+        end
+        U:RefreshTools()
+    end
+    local function FinishInput(_, input)
+        local pending = U.pendingKey
+        if not pending or not F.PublicString(input) or input ~= pending.input then return end
+        -- Keep swallowing the event until release dispatch completes, so the
+        -- new native Interact override cannot reel in during key capture.
+        local function Finish()
+            if not U.capturingKey or U.pendingKey ~= pending then return end
+            if pending.binding then U:SaveFishingKey(pending.binding) else U:StopKeyCapture() end
+        end
+        if C_Timer and C_Timer.After then C_Timer.After(0, Finish) else Finish() end
+    end
+    capture:SetScript("OnKeyDown", StartInput)
+    capture:SetScript("OnKeyUp", FinishInput)
+    capture:SetScript("OnMouseDown", function(frame, input)
+        if F.PublicString(input) and (input == "MiddleButton" or input:match("^Button%d+$")) then
+            StartInput(frame, input)
+        end
+    end)
+    capture:SetScript("OnMouseUp", function(frame, input)
+        if not F.PublicString(input) then return end
+        if input == "LeftButton" then U:StopKeyCapture()
+        else FinishInput(frame, input) end
+    end)
+    capture:SetScript("OnMouseWheel", function(frame, delta)
+        if U.pendingKey or not F.Number(delta) or delta == 0 then return end
+        local input = delta > 0 and "MOUSEWHEELUP" or "MOUSEWHEELDOWN"
+        StartInput(frame, input)
+        FinishInput(frame, input)
+    end)
+    capture:RegisterEvent("PLAYER_REGEN_DISABLED")
+    capture:SetScript("OnEvent", function()
+        if U.capturingKey then U:StopKeyCapture("Change your fishing key after combat.") end
+    end)
+    panel:HookScript("OnHide", function() U:StopKeyCapture() end)
 end
 
 function U:RefreshFishingPrompt()
@@ -118,7 +236,7 @@ function U:ToggleTools()
     if not self.tools then
         local panel = CreateFrame("Frame", "RicoFishingTools", UIParent)
         self.tools = panel
-        panel:SetSize(382, 251)
+        panel:SetSize(382, F.OneKey and 312 or 251)
         panel:SetPoint("CENTER")
         panel:SetFrameStrata("DIALOG")
         panel:SetToplevel(true)
@@ -135,11 +253,9 @@ function U:ToggleTools()
             Check(panel, "Show the lure countdown", "lureTimer", 22, -88),
             Check(panel, "Warn when general bags are nearly full", "bagWarning", 22, -117),
             Check(panel, "Tell me when I loot a favorite catch", "favoriteAlerts", 22, -146),
-            Check(panel, "Show F prompt beside your character", "fishingPrompt", 22, -175),
+            Check(panel, "Show fishing key prompt beside your character", "fishingPrompt", 22, -175),
         }
-        local hint = Text(panel, 10, COLORS.muted)
-        hint:SetPoint("BOTTOMLEFT", 26, 18)
-        hint:SetText("Lure and bag status appear while your fishing pole is equipped.")
+        if F.OneKey then self:BuildFishingKeyControls(panel) end
         panel:Hide()
         if type(UISpecialFrames) == "table" then UISpecialFrames[#UISpecialFrames + 1] = "RicoFishingTools" end
     end
@@ -176,7 +292,7 @@ function U:Build()
         log:SetPoint("RIGHT", close, "LEFT", -8, 0)
     end
     if F.OneKey then
-        self.oneKeyCheck = Check(frame, "Use F while holding a fishing pole", "oneKey", 428, -33)
+        self.oneKeyCheck = Check(frame, "One-key fishing while holding a pole", "oneKey", 428, -33)
         self.oneKeyStatus = Text(frame, 10, COLORS.mint)
         self.oneKeyStatus:SetPoint("TOPLEFT", 432, -58)
         self.oneKeyStatus:SetWidth(230)
@@ -388,8 +504,13 @@ function U:Refresh()
         if F.db.hud then
             self.hud.name:SetText(entry.name)
             UpdateProgress(self.hud.progress, entry)
-            local key = F.OneKey and F.OneKey.mode
-            local hint = key == "reel" and "F when the bobber splashes" or key == "cast" and "F to cast" or "/rf opens the guide"
+            local oneKey = F.OneKey
+            local hint = "/rf opens the guide"
+            if oneKey and oneKey.mode == "reel" then
+                hint = oneKey:GetKeyLabel() .. " when the bobber splashes"
+            elseif oneKey and oneKey.mode == "cast" then
+                hint = oneKey:GetKeyLabel() .. " to cast"
+            end
             self.hud.detail:SetText("This session: " .. (F.session.items[entry.id] or 0) .. " • " .. hint)
         end
     end
