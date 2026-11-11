@@ -296,6 +296,19 @@ function W:CreatePrompt()
     key:SetPoint("LEFT", 1, 0)
     key:SetSize(51, 52)
     key:EnableMouse(false)
+
+    local smokePath = "Interface\\AddOns\\" .. F.name .. "\\Media\\PromptSmoke.tga"
+    local smoke = prompt:CreateTexture(nil, "BACKGROUND", nil, -2)
+    smoke:SetTexture(smokePath)
+    smoke:SetPoint("CENTER", key, "CENTER", -3, 0)
+    smoke:SetSize(104, 104)
+    smoke:SetVertexColor(0.54, 0.70, 0.62, 0.46)
+    local smokeGlow = prompt:CreateTexture(nil, "BACKGROUND", nil, -1)
+    smokeGlow:SetTexture(smokePath)
+    smokeGlow:SetAllPoints(smoke)
+    smokeGlow:SetBlendMode("ADD")
+    smokeGlow:SetVertexColor(0.31, 1, 0.62)
+
     Metal(key, 1, 2, 49, 48, 9)
     CutOutline(key, 5, 6, 41, 40, 6, 1, {
         { 0.38, 0.79, 0.56, 0.83 }, { 0.17, 0.36, 0.25, 0.88 },
@@ -314,9 +327,6 @@ function W:CreatePrompt()
     local aura = CreateFrame("Frame", nil, key)
     aura:SetAllPoints(key)
     aura:EnableMouse(false)
-    CutOutline(aura, 0, 1, 51, 50, 9, 6, {
-        { 0.17, 0.83, 0.44, 0.24 }, { 0.12, 0.68, 0.36, 0.19 },
-    }, true)
     CutOutline(aura, 2, 3, 47, 46, 8, 1.3, {
         { 0.53, 1, 0.74, 0.97 }, { 0.29, 0.86, 0.55, 0.74 },
     }, true)
@@ -325,13 +335,22 @@ function W:CreatePrompt()
         rivet:SetRotation(math.pi / 4)
         rivet:SetBlendMode("ADD")
     end
-    local pulse = aura:CreateAnimationGroup()
+    local pulse = prompt:CreateAnimationGroup()
     pulse:SetLooping("BOUNCE")
     local alpha = pulse:CreateAnimation("Alpha")
+    alpha:SetTarget(aura)
+    alpha:SetOrder(1)
     alpha:SetFromAlpha(0.46)
     alpha:SetToAlpha(1)
-    alpha:SetDuration(1.05)
+    alpha:SetDuration(1.20)
     alpha:SetSmoothing("IN_OUT")
+    local glowAlpha = pulse:CreateAnimation("Alpha")
+    glowAlpha:SetTarget(smokeGlow)
+    glowAlpha:SetOrder(1)
+    glowAlpha:SetFromAlpha(0.18)
+    glowAlpha:SetToAlpha(0.78)
+    glowAlpha:SetDuration(1.20)
+    glowAlpha:SetSmoothing("IN_OUT")
     prompt:SetScript("OnShow", function() pulse:Play() end)
     prompt:SetScript("OnHide", function() pulse:Stop() end)
     for _, event in ipairs({ "PLAYER_MOUNT_DISPLAY_CHANGED", "PLAYER_DEAD", "PLAYER_ALIVE", "PLAYER_UNGHOST" }) do
