@@ -2,7 +2,7 @@
 ## Title: RicoFishing
 ## Notes: One-key fishing, recent catches, wanted catch effects, and personal fishing spot comparisons for WoW Forever.
 ## Author: Rico
-## Version: 1.9.0
+## Version: 1.9.1
 ## SavedVariables: RicoFishingDB, RicoSuiteDB
 ## SavedVariablesPerCharacter: RicoFishingLogDB
 ## OptionalDeps: Questie
