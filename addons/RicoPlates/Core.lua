@@ -1,6 +1,6 @@
 local addonName, RP = ...
 _G.RicoPlates = RP
-RP.name, RP.version = addonName, "1.24.0"
+RP.name, RP.version = addonName, "1.25.0"
 RP.media = "Interface\\AddOns\\" .. addonName .. "\\Media\\"
 RP.defaults = {
     enabled = true, showFriendlyNPCs = false,
@@ -9,7 +9,7 @@ RP.defaults = {
     healthText = "percent", powerText = "value", width = 190, height = 19,
     scale = 1, fontSize = 11, verticalOffset = 0, bubbles = true,
     bubbleCount = 3, bubbleScale = 1.8, maxAnimatedPlates = 24,
-    questMarkers = true, questText = false, useQuestie = true, questRoutes = true,
+    questMarkers = true, questText = false, useQuestie = true, questRoutes = true, compactQuestTracker = true,
     showDebuffs = true, debuffSize = 18, maxDebuffs = 6, debuffsMineOnly = false,
     showBuffs = true, buffSize = 18, maxBuffs = 6, buffsMineOnly = false, targetBuffsAll = true,
     grayTapped = true, grayTrivial = false,
@@ -275,6 +275,7 @@ function RP:ApplySettings()
     if self.Aggro then self.Aggro:UpdateSettings() end
     if self.Quest and self.Quest.UpdateSettings then self.Quest:UpdateSettings() end
     if self.QuestRoutes then self.QuestRoutes:UpdateSettings() end
+    if self.QuestTracker then self.QuestTracker:UpdateSettings() end
     if self.World and self.World.UpdateSettings then self.World:UpdateSettings() end
     if self.Minimap then self.Minimap:UpdateSettings() end
     if self.Options and self.Options.RefreshPreview then self.Options:RefreshPreview() end
@@ -421,6 +422,7 @@ function RP:Initialize()
     if self.ClassResources then self.ClassResources:Initialize() end
     self.Quest:Initialize()
     if self.QuestRoutes then self.QuestRoutes:Initialize() end
+    if self.QuestTracker then self.QuestTracker:Initialize() end
     self.World:Initialize()
     self.Options:Initialize()
     self:ApplySettings()

@@ -336,6 +336,7 @@ function O:Build()
     limitations:SetPoint("TOPLEFT", 5, -372)
     limitations:SetWidth(420)
     limitations:SetWordWrap(true)
+    Checkbox(quests, -415, "compactQuestTracker", "Show the compact quest tracker")
 
     local unitOptions = self.pages[5]
     local unitRows = {
