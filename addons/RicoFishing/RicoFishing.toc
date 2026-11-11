@@ -2,7 +2,7 @@
 ## Title: RicoFishing
 ## Notes: One-key fishing, lure and bag alerts, catch history, and personal spot comparisons for WoW Forever.
 ## Author: Rico
-## Version: 1.7.3
+## Version: 1.7.4
 ## SavedVariables: RicoFishingDB, RicoSuiteDB
 ## SavedVariablesPerCharacter: RicoFishingLogDB
 ## OptionalDeps: Questie
