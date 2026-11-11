@@ -17,19 +17,21 @@ end
 
 local function Ignore() end
 
-local function CreateParking(manager)
-    local parent = CreateFrame("Frame", nil, UIParent)
-    parent:Hide()
-    local ok, parking = pcall(CreateFrame, "Frame", nil, parent, "ObjectiveTrackerContainerTemplate")
-    if not ok or not parking.HasModule then return end
-    parking:SetParent(parent)
+local function CreateParking(manager, container)
+    -- The Blizzard container template calls ManagedFrameMixin:OnShow during creation.
+    -- A hidden holder needs the module registry methods, but no managed layout.
+    local parking = CreateFrame("Frame", nil, UIParent)
     parking:Hide()
-    parking:SetScript("OnShow", nil)
-    parking:SetScript("OnSizeChanged", nil)
     parking.modules = {}
+    parking.AddModule = container.AddModule
+    parking.RemoveModule = container.RemoveModule
+    parking.HasModule = container.HasModule
+    parking.RemoveAllModules = container.RemoveAllModules
     -- Parked native modules retain their watch/collapse state without laying out invisible blocks.
-    parking.MarkDirty, parking.Update, parking.ForEachModule = Ignore, Ignore, Ignore
+    parking.OnAdded, parking.SetBackgroundAlpha = Ignore, Ignore
+    parking.MarkDirty, parking.Update, parking.ForceExpand, parking.ForEachModule = Ignore, Ignore, Ignore, Ignore
     parking.HasAnyModules = function() return false end
+    parking.IsCollapsed = function() return true end
     manager:AddContainer(parking)
     return parking
 end
@@ -119,7 +121,8 @@ function A:Attach(frame)
     local manager, container = ObjectiveTrackerManager, ObjectiveTrackerFrame
     if not (QuestObjectiveTracker or CampaignQuestObjectiveTracker) then return false, "unavailable" end
     if not (manager and manager.GetContainerForModule and manager.SetModuleContainer and manager.AddContainer
-        and container and container.HasModule and container.MarkDirty) then return false, "pending" end
+        and container and container.AddModule and container.RemoveModule and container.HasModule
+        and container.RemoveAllModules and container.MarkDirty) then return false, "pending" end
     if Locked() then return false, "combat" end
 
     local stock, order = {}, math.huge
@@ -134,7 +137,7 @@ function A:Attach(frame)
         end
     end
 
-    self.parking = self.parking or CreateParking(manager)
+    self.parking = self.parking or CreateParking(manager, container)
     self.host = self.host or CreateHost(container)
     local parking, host = self.parking, self.host
     if not parking or not host then return false, "pending" end

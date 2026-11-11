@@ -12,6 +12,8 @@ local function Text(parent, size, color, justify)
     text:SetTextColor(unpack(color))
     text:SetJustifyH(justify or "LEFT")
     text:SetWordWrap(false)
+    text:SetShadowColor(0, 0, 0, 0.9)
+    text:SetShadowOffset(1, -1)
     return text
 end
 
@@ -64,6 +66,17 @@ local function ObjectiveSummary(quest)
     return objectives[1] and objectives[1].text or ""
 end
 
+local function PaintRow(row, hover)
+    local r, g, b = unpack(T.colors.accent)
+    if hover then
+        row.surface:SetVertexColor(0.035 + 0.10 * r, 0.045 + 0.10 * g, 0.043 + 0.10 * b, 0.82)
+    else
+        row.surface:SetVertexColor(0.013, 0.024, 0.021, 0.56)
+    end
+    local alpha = row.complete and 0.96 or hover and 0.72 or 0.26
+    row.marker:SetColorTexture(r, g, b, alpha)
+end
+
 function Q:Build()
     if self.frame then return end
     local frame = CreateFrame("Frame", "RicoPlatesCompactQuestTracker", UIParent)
@@ -72,36 +85,66 @@ function Q:Build()
     frame:Hide()
     T:Panel(frame)
 
-    local title = Text(frame, 14, T.colors.text)
-    title:SetPoint("TOPLEFT", 12, -9)
+    local smoke = frame:CreateTexture(nil, "BACKGROUND", nil, 1)
+    smoke:SetTexture(RP.media .. "QuestTrackerSmoke")
+    smoke:SetPoint("TOPLEFT", 1, -1)
+    smoke:SetPoint("BOTTOMRIGHT", -1, 1)
+    smoke:SetAlpha(0.54)
+
+    local headerRule = frame:CreateTexture(nil, "BORDER")
+    headerRule:SetPoint("TOPLEFT", 6, -29)
+    headerRule:SetPoint("TOPRIGHT", -6, -29)
+    headerRule:SetHeight(1)
+    headerRule:SetColorTexture(0.31, 0.69, 0.53, 0.52)
+    if CreateColor and headerRule.SetGradient then
+        headerRule:SetGradient("HORIZONTAL", CreateColor(0.36, 0.89, 0.66, 0.69), CreateColor(0.24, 0.64, 0.46, 0.19))
+    end
+
+    local title = Text(frame, 15, T.colors.text)
+    title:SetPoint("TOPLEFT", 14, -6)
     title:SetText("Quests")
+    local countSurface = frame:CreateTexture(nil, "ARTWORK")
+    countSurface:SetPoint("TOPRIGHT", -7, -6)
+    countSurface:SetSize(67, 18)
+    countSurface:SetColorTexture(0.032, 0.12, 0.086, 0.75)
     self.count = Text(frame, 11, T.colors.mint, "RIGHT")
-    self.count:SetPoint("TOPRIGHT", -12, -11)
+    self.count:SetPoint("RIGHT", countSurface, "RIGHT", -7, 0)
 
     for index = 1, ROWS do
         local row = CreateFrame("Button", nil, frame)
         row:SetSize(WIDTH - 12, ROW_HEIGHT - 2)
         row:SetPoint("TOPLEFT", 6, -HEADER_HEIGHT - (index - 1) * ROW_HEIGHT)
-        T:Panel(row)
-        row.title = Text(row, 11, T.colors.text)
-        row.title:SetPoint("TOPLEFT", 8, -5)
-        row.title:SetWidth(WIDTH - 86)
-        row.distance = Text(row, 10, T.colors.mint, "RIGHT")
-        row.distance:SetPoint("TOPRIGHT", -8, -6)
-        row.distance:SetWidth(58)
+        row.surface = T:Fill(row)
+        row.marker = row:CreateTexture(nil, "ARTWORK")
+        row.marker:SetPoint("TOPLEFT", 0, -5)
+        row.marker:SetPoint("BOTTOMLEFT", 0, 5)
+        row.marker:SetWidth(2)
+        PaintRow(row, false)
+        row.title = Text(row, 12, T.colors.text)
+        row.title:SetPoint("TOPLEFT", 10, -4)
+        row.title:SetWidth(WIDTH - 92)
+        row.distance = Text(row, 11, T.colors.mint, "RIGHT")
+        row.distance:SetPoint("TOPRIGHT", -8, -5)
+        row.distance:SetWidth(62)
         row.detail = Text(row, 10, T.colors.muted)
-        row.detail:SetPoint("BOTTOMLEFT", 8, 5)
-        row.detail:SetWidth(WIDTH - 28)
+        row.detail:SetPoint("BOTTOMLEFT", 10, 5)
+        row.detail:SetWidth(WIDTH - 31)
         row:SetScript("OnClick", OpenQuest)
         row:SetScript("OnEnter", function(button)
-            T:Row(button, false, true)
+            button.hover = true
+            PaintRow(button, true)
             ShowTooltip(button)
         end)
         row:SetScript("OnLeave", function(button)
-            T:Row(button, false, false)
+            button.hover = nil
+            PaintRow(button, false)
             HideTooltip(button)
         end)
-        row:SetScript("OnHide", HideTooltip)
+        row:SetScript("OnHide", function(button)
+            button.hover = nil
+            PaintRow(button, false)
+            HideTooltip(button)
+        end)
         row:Hide()
         self.rows[index] = row
     end
@@ -132,7 +175,13 @@ function Q:Refresh()
             SetText(row.detail, detail)
             if row.complete ~= quest.complete then
                 row.complete = quest.complete
-                row.title:SetTextColor(unpack(quest.complete and T.colors.mint or T.colors.text))
+                row.detail:SetTextColor(unpack(quest.complete and T.colors.mint or T.colors.muted))
+                PaintRow(row, row.hover)
+            end
+            local distanceKnown = quest.distance ~= nil
+            if row.distanceKnown ~= distanceKnown then
+                row.distanceKnown = distanceKnown
+                row.distance:SetTextColor(unpack(distanceKnown and T.colors.mint or T.colors.muted))
             end
             if tooltipChanged and GameTooltip and GameTooltip:IsShown() and GameTooltip:IsOwned(row) then
                 ShowTooltip(row)
