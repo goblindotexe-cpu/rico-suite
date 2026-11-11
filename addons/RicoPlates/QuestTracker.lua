@@ -1,9 +1,10 @@
 local _, RP = ...
 local T = RP.Theme
-local Q = { rows = {} }
+local Q = { rows = {}, scrollOffsets = {} }
 RP.QuestTracker = Q
 
 local ROWS, WIDTH, ROW_HEIGHT, HEADER_HEIGHT = 7, 292, 36, 38
+local TAB_SPACE = 28
 local unpack = unpack or table.unpack
 
 local function Text(parent, size, color, justify)
@@ -42,6 +43,7 @@ local function ShowTooltip(row)
     tooltip:SetOwner(row, "ANCHOR_LEFT")
     tooltip:ClearLines()
     tooltip:SetText(quest.title)
+    if quest.dungeon then tooltip:AddLine("Dungeon quest", 0.94, 0.75, 0.43) end
     if quest.complete then tooltip:AddLine("Ready to turn in", 0.42, 0.92, 0.68) end
     for _, objective in ipairs(quest.objectives or {}) do
         local color = objective.finished and T.colors.muted or T.colors.text
@@ -123,6 +125,18 @@ local function ScrollWheel(_, delta)
     Q:SetScrollOffset((Q.scrollOffset or 0) - delta)
 end
 
+local function CreateTab(footer, key, label, anchor)
+    local button = CreateFrame("Button", nil, footer)
+    button:SetSize((WIDTH - 18) / 2, 23)
+    button:SetPoint(anchor, footer, anchor)
+    button.label = Text(button, 11, T.colors.text, "CENTER")
+    button.label:SetPoint("CENTER")
+    button.label:SetText(label)
+    T:Button(button)
+    button:SetScript("OnClick", function() Q:SelectTab(key) end)
+    return button
+end
+
 function Q:Build()
     if self.frame then return end
     local frame = CreateFrame("Frame", "RicoPlatesCompactQuestTracker", UIParent)
@@ -196,6 +210,16 @@ function Q:Build()
     thumb:SetSize(5, 20)
     thumb:SetVertexColor(0.43, 0.85, 0.63, 0.9)
     scrollbar:Hide()
+
+    local footer = CreateFrame("Frame", nil, body)
+    footer:SetSize(WIDTH - 12, 23)
+    footer:SetPoint("BOTTOM", body, "BOTTOM", 0, 5)
+    footer:Hide()
+    self.footer = footer
+    self.tabs = {
+        quests = CreateTab(footer, "quests", "Quests", "LEFT"),
+        dungeons = CreateTab(footer, "dungeons", "Dungeons", "RIGHT"),
+    }
 
     for index = 1, ROWS do
         local row = CreateFrame("Button", nil, body)
@@ -289,38 +313,81 @@ function Q:SetScrollOffset(value)
     local offset = math.max(0, math.min(self.scrollMax, math.floor(value + 0.5)))
     if self.scrollOffset == offset then return end
     self.scrollOffset = offset
+    self.scrollOffsets[self.tab] = offset
     if self.scrollbar:GetValue() ~= offset then self.scrollbar:SetValue(offset) end
     self:RenderRows()
+end
+
+function Q:RenderView()
+    local groups = self.questGroups
+    local quests = groups[self.tab]
+    self.quests = quests
+    local frame = self.frame
+    local count = math.min(#quests, ROWS)
+    local visible = self.total > 0
+    local showTabs = #groups.dungeons > 0
+    local tabSpace = showTabs and TAB_SPACE or 0
+    local headerSpace = self.headerIntegrated and 0 or HEADER_HEIGHT
+    local height = math.max(1, headerSpace + count * ROW_HEIGHT + (count > 0 and 5 or 0) + tabSpace)
+    if self.body:IsShown() ~= (count > 0) then self.body:SetShown(count > 0) end
+    JoinPanels(not self.headerIntegrated or self.headerAdjacent)
+    if frame:GetHeight() ~= height then frame:SetHeight(height) end
+
+    local scrollbar = self.scrollbar
+    if self.footer:IsShown() ~= showTabs then
+        self.footer:SetShown(showTabs)
+        scrollbar:SetPoint("BOTTOMRIGHT", -5, 7 + tabSpace)
+    end
+    if showTabs then
+        for key, button in pairs(self.tabs) do
+            if button.selected ~= (self.tab == key) then
+                button.selected = self.tab == key
+                T:PaintButton(button)
+            end
+            if button:IsEnabled() ~= (#groups[key] > 0) then button:SetEnabled(#groups[key] > 0) end
+        end
+    end
+
+    local scrollMax = math.max(0, #quests - ROWS)
+    self.scrollOffset = math.min(self.scrollOffsets[self.tab] or 0, scrollMax)
+    self.scrollOffsets[self.tab] = self.scrollOffset
+    scrollbar.updatingRange = true
+    if self.scrollMax ~= scrollMax then
+        self.scrollMax = scrollMax
+        scrollbar:SetMinMaxValues(0, math.max(1, scrollMax))
+        scrollbar:SetShown(scrollMax > 0)
+    end
+    if scrollbar:GetValue() ~= self.scrollOffset then scrollbar:SetValue(self.scrollOffset) end
+    scrollbar.updatingRange = nil
+    self:RenderRows()
+    if frame:IsShown() ~= visible then frame:SetShown(visible) end
+    RP.QuestTrackerNative:LayoutChanged(frame)
+end
+
+function Q:SelectTab(tab)
+    if not self.attached or self.tab == tab or #self.questGroups[tab] == 0 then return end
+    self.tab = tab
+    self:RenderView()
 end
 
 function Q:Refresh()
     if not self.attached then return end
     local quests, total = RP.QuestTrackerData:Refresh()
-    self.quests = quests
-    local frame = self.frame
-    local count = math.min(#quests, ROWS)
-    local visible = total > 0
-    local headerSpace = self.headerIntegrated and 0 or HEADER_HEIGHT
-    local height = math.max(1, headerSpace + count * ROW_HEIGHT + (count > 0 and 5 or 0))
-    if self.body:IsShown() ~= (count > 0) then self.body:SetShown(count > 0) end
-    JoinPanels(not self.headerIntegrated or self.headerAdjacent)
-    if frame:GetHeight() ~= height then frame:SetHeight(height) end
-    SetText(self.count, ("%d active"):format(total))
-
-    local scrollbar = self.scrollbar
-    local scrollMax = math.max(0, #quests - ROWS)
-    self.scrollOffset = math.min(self.scrollOffset or 0, scrollMax)
-    if self.scrollMax ~= scrollMax then
-        self.scrollMax = scrollMax
-        scrollbar.updatingRange = true
-        scrollbar:SetMinMaxValues(0, math.max(1, scrollMax))
-        scrollbar.updatingRange = nil
-        scrollbar:SetShown(scrollMax > 0)
+    local groups = { quests = {}, dungeons = {} }
+    for _, quest in ipairs(quests) do
+        local group = quest.dungeon and groups.dungeons or groups.quests
+        group[#group + 1] = quest
     end
-    if scrollbar:GetValue() ~= self.scrollOffset then scrollbar:SetValue(self.scrollOffset) end
-    self:RenderRows()
-    if frame:IsShown() ~= visible then frame:SetShown(visible) end
-    RP.QuestTrackerNative:LayoutChanged(frame)
+    self.questGroups, self.total = groups, total
+    if #groups.dungeons == 0 then
+        self.tab = "quests"
+    elseif #groups.quests == 0 then
+        self.tab = "dungeons"
+    else
+        self.tab = self.tab or "quests"
+    end
+    SetText(self.count, ("%d active"):format(total))
+    self:RenderView()
 end
 
 local function Tick(frame, elapsed)
@@ -337,7 +404,9 @@ function Q:UpdateSettings()
         self.questieNotice = nil
         if self.frame and RP.QuestTrackerNative:Detach(self.frame) then
             self.attached = nil
+            self.tab = nil
             self.scrollOffset = 0
+            self.scrollOffsets = {}
             self.frame:SetScript("OnUpdate", nil)
             self.frame:Hide()
         end

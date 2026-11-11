@@ -35,6 +35,32 @@ local function Text(value)
     if RP.Readable(value) and type(value) == "string" and value ~= "" then return value end
 end
 
+local function IsDungeonQuest(api, id, title)
+    local dungeonLabel = Text(CALENDAR_TYPE_DUNGEON) or "Dungeon"
+    local tag = Read(api.GetQuestTagInfo, id)
+    if Table(tag) then
+        local worldType = Count(tag.worldQuestType)
+        local worldTags = Enum and Enum.QuestTagType
+        if worldType == (worldTags and worldTags.Dungeon or 6) then return true end
+        if worldType == (worldTags and worldTags.Raid or 8) then return false end
+
+        local tagID = Count(tag.tagID)
+        if tagID and tagID > 0 then
+            local constants = Constants and Constants.QuestConsts
+            local tags = Enum and Enum.QuestTag
+            -- Camelot's default tracker uses this tag ID for its localized dungeon label.
+            return tagID == (constants and constants.QUEST_INFO_DUNGEON_ID or 81)
+                or (tags ~= nil and (tagID == tags.Dungeon or tagID == tags.Heroic))
+        end
+        local tagName = Text(tag.tagName)
+        if tagName then return tagName == dungeonLabel or tagName == "Dungeon" end
+    end
+
+    local english = " (Dungeon)"
+    local localized = Read(string.format, Text(PARENS_TEMPLATE) or "(%s)", dungeonLabel)
+    return title:sub(-#english) == english or (localized ~= nil and title:sub(-#localized - 1) == " " .. localized)
+end
+
 local function Objectives(api, id)
     local result = {}
     local objectives = Read(api.GetQuestObjectives, id)
@@ -83,9 +109,9 @@ local function ReadLog()
                 seen[id] = true
                 activeCount = activeCount + 1
                 if not watched or watched[id] then
+                    local title = Text(info.title) or Text(Read(api.GetTitleForQuestID, id)) or ("Quest " .. id)
                     entries[#entries + 1] = {
-                        id = id, order = index,
-                        title = Text(info.title) or Text(Read(api.GetTitleForQuestID, id)) or ("Quest " .. id),
+                        id = id, order = index, title = title, dungeon = IsDungeonQuest(api, id, title),
                         complete = RP.PublicTrue(Read(api.IsComplete, id)), objectives = Objectives(api, id),
                     }
                 end

@@ -1,6 +1,6 @@
 local addonName, RP = ...
 _G.RicoPlates = RP
-RP.name, RP.version = addonName, "1.27.2"
+RP.name, RP.version = addonName, "1.28.0"
 RP.media = "Interface\\AddOns\\" .. addonName .. "\\Media\\"
 RP.defaults = {
     enabled = true, showFriendlyNPCs = false,
@@ -279,6 +279,7 @@ function RP:ApplySettings()
     if self.Quest and self.Quest.UpdateSettings then self.Quest:UpdateSettings() end
     if self.QuestRoutes then self.QuestRoutes:UpdateSettings() end
     if self.QuestTracker then self.QuestTracker:UpdateSettings() end
+    if self.PickPocketHUD then self.PickPocketHUD:UpdateSettings() end
     if self.World and self.World.UpdateSettings then self.World:UpdateSettings() end
     if self.Minimap then self.Minimap:UpdateSettings() end
     if self.Options and self.Options.RefreshPreview then self.Options:RefreshPreview() end
@@ -408,6 +409,7 @@ function RP:Initialize()
     if self.Mining then self.Mining:Initialize() end
     if self.Inventory then self.Inventory:Initialize() end
     if self.Minimap then self.Minimap:Initialize() end
+    if self.PickPocketHUD then self.PickPocketHUD:Initialize() end
     if not C_NamePlate or not C_NamePlate.GetNamePlateForUnit then
         self:Print("This client has no supported nameplate API. Use the Forever client.")
         return
