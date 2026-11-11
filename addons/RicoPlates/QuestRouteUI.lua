@@ -29,7 +29,7 @@ function U:StartSelected()
     if not self.selectedID then self.notice = "Select a quest from your quest log first."
     elseif not RP.QuestRoutes then self.notice = "The walking-route provider is unavailable."
     else
-        local ok, message = RP.QuestRoutes:StartQuest(self.selectedID)
+        local ok, message = RP.QuestRoutes:StartCircuit(self.selectedID)
         self.notice = not ok and message or nil
     end
     self:RefreshStatus()
@@ -90,7 +90,7 @@ function U:Build()
     T:Window(frame)
     local title = Text(frame, "", 23, T.colors.mint)
     title:SetPoint("TOPLEFT", 24, -22); T:Title(title, "QUEST ROUTES")
-    local subtitle = Text(frame, "Game quest locations · walking routes · Questie optional", 11, T.colors.muted)
+    local subtitle = Text(frame, "Walking routes · continues after each turn-in · Questie optional", 11, T.colors.muted)
     subtitle:SetPoint("TOPLEFT", 24, -57)
     self.closeButton = Button(frame, "Close", 72, function() frame:Hide() end)
     self.closeButton:SetPoint("TOPRIGHT", -24, -29)
@@ -98,10 +98,8 @@ function U:Build()
     self.status:SetPoint("TOPLEFT", 24, -87); self.status:SetWidth(712); self.status:SetHeight(40); self.status:SetJustifyV("TOP")
     self.nearestButton = Button(frame, "Nearest quest", 152, function() U:RouteAction("StartNearest") end)
     self.nearestButton:SetPoint("TOPLEFT", 24, -132)
-    self.circuitButton = Button(frame, "Start quest circuit", 164, function() U:RouteAction("StartCircuit") end)
-    self.circuitButton:SetPoint("LEFT", self.nearestButton, "RIGHT", 12, 0)
     self.skipButton = Button(frame, "Skip quest", 116, function() U:RouteAction("SkipQuest") end)
-    self.skipButton:SetPoint("LEFT", self.circuitButton, "RIGHT", 12, 0)
+    self.skipButton:SetPoint("LEFT", self.nearestButton, "RIGHT", 12, 0)
     local heading = Text(frame, "Active quests", 12)
     heading:SetPoint("TOPLEFT", 24, -180)
     self.circuitProgress = Text(frame, "", 11, T.colors.muted)
@@ -172,7 +170,6 @@ function U:RefreshStatus()
     local ready = status.ready == true
     local hasQuests = self.quests and #self.quests > 0
     self.nearestButton:SetEnabled(ready and hasQuests and type(routes.StartNearest) == "function")
-    self.circuitButton:SetEnabled(ready and hasQuests and not circuit and type(routes.StartCircuit) == "function")
     self.skipButton:SetShown(circuit)
     self.skipButton:SetEnabled(ready and circuit and status.active == true and status.canSkip ~= false and type(routes.SkipQuest) == "function")
     self.startButton:SetEnabled(selected ~= nil and ready)

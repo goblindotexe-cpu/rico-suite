@@ -190,11 +190,17 @@ local function NativeDestination(questID, title, complete, mapMarkers)
     if result then result.title, result.kind = title, complete and "turnin" or "quest"; return result end
 end
 
+local function QuestComplete(questID)
+    local api = C_QuestLog or {}
+    if Read(api.ReadyForTurnIn, questID) == true then return true end
+    return Read(api.IsComplete, questID)
+end
+
 function Q:ResolveQuest(questID, mapMarkers)
     if not ID(questID) then return nil, "Choose a quest from your quest log." end
     local title = Read(C_QuestLog and C_QuestLog.GetTitleForQuestID, questID)
     if not String(title) or title == "" then title = "Quest " .. questID end
-    local complete = Read(C_QuestLog and C_QuestLog.IsComplete, questID)
+    local complete = QuestComplete(questID)
     local db, zones = Questie()
     if db then
         local quest = Read(Field(db, "GetQuest"), questID)
@@ -351,8 +357,8 @@ function Q:GetStatus()
     if plan then
         return {ready=true,state=self.state,message=self.message,active=true,verified=plan.verified,mode=plan.travelMode,
             activeQuestID=self.activeQuestID,title=self.destination and self.destination.title,source=self.destination and self.destination.source,
-            circuit=plan.circuit,circuitIndex=plan.index,circuitCompleted=plan.completed,circuitRemaining=plan.remaining,
-            canSkip=plan.circuit and self.activeQuestID ~= nil}
+            circuit=true,circuitIndex=plan.index,circuitCompleted=plan.completed,circuitRemaining=plan.remaining,
+            canSkip=self.activeQuestID ~= nil}
     end
     if self.active or self.activeQuestID then
         if Read(api.CurrentStop, self.owner) then
@@ -438,7 +444,7 @@ function Q:ChooseNextQuest(api, plan)
         if ok then
             plan.index = plan.index + 1
             plan.dirty, plan.arrived, plan.verified, plan.travelMode = false, false, nil, nil
-            plan.waitingForLocation = nil
+            plan.waitingForLocation, plan.retryUntil = nil, nil
             return true, self.message
         end
         plan.excluded[candidate.id] = true
@@ -469,14 +475,23 @@ local function QuestPlanTick(frame, elapsed)
     Q:UpdateQuestPlan()
 end
 
-function Q:StartQuestPlan(circuit)
+function Q:StartCircuit(questID)
     if not Enabled() then return false, "Enable quest routes in RicoPlates settings first." end
     if Combat() then return false, "Finish combat before planning a quest route." end
     local api, bridge, reason = self:Provider()
     if not api then return false, reason end
     if not CanNavigate(self, api, bridge) then return false, "Another journey is active. Stop it before starting quest guidance." end
-    local plan = {circuit=circuit,excluded={},index=0,completed=0,unreachable=0}
-    local started, message = self:ChooseNextQuest(api, plan)
+    local plan = {excluded={},index=0,completed=0,unreachable=0}
+    local started, message
+    if ID(questID) then
+        if Read(C_QuestLog and C_QuestLog.IsOnQuest, questID) == false then return false, "That quest is no longer in your quest log." end
+        local point, why = self:ResolveQuest(questID)
+        if not point then return false, why end
+        started, message = NavigateTo(self, api, questID, point, "Checking walkable terrain to " .. point.title .. "…")
+        plan.index = 1
+    else
+        started, message = self:ChooseNextQuest(api, plan)
+    end
     if not started then return false, message end
     self:Initialize()
     self.questPlan = plan
@@ -485,14 +500,29 @@ function Q:StartQuestPlan(circuit)
     return true, message
 end
 
-function Q:StartNearest() return self:StartQuestPlan(false) end
-function Q:StartCircuit() return self:StartQuestPlan(true) end
+function Q:StartNearest() return self:StartCircuit() end
 
 function Q:FinishQuestPlan(state, message)
     self:ClearQuestPlan()
     self.active, self.activeQuestID, self.destination = false, nil, nil
     self.state, self.message = state, message
     return true, message
+end
+
+function Q:ContinueQuestPlan(api, bridge)
+    local plan = self.questPlan
+    if not CanNavigate(self, api, bridge) then
+        self.state, self.message = "paused", "Waiting for the other journey to finish."
+        return true, self.message
+    end
+    plan.dirty = false
+    local ok, message = self:ChooseNextQuest(api, plan)
+    if ok then return true, message end
+    if plan.retryUntil and GetTime() < plan.retryUntil then
+        self.state, self.message = "waiting", "Waiting for the quest log to update…"
+        return true, self.message
+    end
+    return self:FinishQuestPlan("idle", message)
 end
 
 function Q:AdvanceQuestPlan(api, bridge, reason)
@@ -502,23 +532,17 @@ function Q:AdvanceQuestPlan(api, bridge, reason)
     end
     plan.excluded[self.activeQuestID] = true
     plan.outcome = nil
-    if reason == "turned_in" then plan.completed = plan.completed + 1 end
+    if reason == "turned_in" then
+        plan.completed = plan.completed + 1
+        plan.retryUntil = GetTime() + 2
+    end
     if reason == "no_path" then plan.unreachable = plan.unreachable + 1 end
     self.active, self.activeQuestID, self.destination = false, nil, nil
-    if not plan.circuit and reason ~= "no_path" then
-        return self:FinishQuestPlan("idle", reason == "turned_in" and "Quest turned in." or "The quest is no longer active.")
-    end
-    if not CanNavigate(self, api, bridge) then
-        self.state, self.message = "paused", "Waiting for the other journey to finish."
-        return true, self.message
-    end
-    local ok, message = self:ChooseNextQuest(api, plan)
-    if ok then return true, message end
-    return self:FinishQuestPlan("idle", message)
+    return self:ContinueQuestPlan(api, bridge)
 end
 
 function Q:SkipQuest()
-    if not (self.questPlan and self.questPlan.circuit and self.activeQuestID) then return false, "There is no quest to skip." end
+    if not (self.questPlan and self.activeQuestID) then return false, "There is no quest to skip." end
     if Combat() then return false, "Finish combat before skipping this quest." end
     local api, bridge, reason = self:Provider()
     if not api then return false, reason end
@@ -536,9 +560,8 @@ function Q:UpdateQuestPlan()
     if not api then self:FinishQuestPlan("missing_provider", reason); return end
     local id = self.activeQuestID
     if not id then
-        if CanNavigate(self, api, bridge) then
-            local ok, message = self:ChooseNextQuest(api, plan)
-            if not ok then self:FinishQuestPlan("idle", message) end
+        if self.state == "paused" or plan.dirty or not plan.retryUntil or GetTime() >= plan.retryUntil then
+            self:ContinueQuestPlan(api, bridge)
         end
         return
     end
@@ -566,7 +589,7 @@ function Q:UpdateQuestPlan()
             self:AdvanceQuestPlan(api, bridge, "no_path")
             return
         end
-        if not point and self.destination.kind ~= "turnin" and Read(C_QuestLog and C_QuestLog.IsComplete, id) == true then
+        if not point and self.destination.kind ~= "turnin" and QuestComplete(id) == true then
             if ownsStop and ProviderRead("Cancel", api.Cancel, self.owner) ~= true then return end
             plan.waitingForLocation, plan.verified, plan.travelMode = true, nil, nil
             self.state, self.message = "waiting", "Quest objectives complete. Waiting for a readable turn-in location."
@@ -640,7 +663,7 @@ function Q:Initialize()
     if self.initialized then return end
     self.initialized = true
     self.events = CreateFrame("Frame")
-    for _, event in ipairs({"QUEST_REMOVED", "QUEST_TURNED_IN", "QUEST_LOG_UPDATE", "QUEST_WATCH_UPDATE",
+    for _, event in ipairs({"QUEST_REMOVED", "QUEST_TURNED_IN", "QUEST_ACCEPTED", "QUEST_LOG_UPDATE", "QUEST_WATCH_UPDATE",
         "QUEST_POI_UPDATE", "WAYPOINT_UPDATE", "ZONE_CHANGED_NEW_AREA"}) do
         pcall(self.events.RegisterEvent, self.events, event)
     end

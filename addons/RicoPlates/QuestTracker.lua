@@ -116,7 +116,13 @@ local function IntegrateHeader(frame, integrated, rightReserve)
     Q.title:SetText(integrated and "All Objectives" or "Quests")
     local reserved = rightReserve or 0
     if Q.settings then Q.settings:SetPoint("RIGHT", Q.header, "RIGHT", -reserved - 6, 0) end
-    Q.countSurface:SetPoint("RIGHT", Q.header, "RIGHT", -reserved - (Q.settings and 32 or 8), 0)
+    if Q.gpsButton then
+        if Q.settings then Q.gpsButton:SetPoint("RIGHT", Q.settings, "LEFT", -4, 0)
+        else Q.gpsButton:SetPoint("RIGHT", Q.header, "RIGHT", -reserved - 6, 0) end
+    end
+    local button = Q.gpsButton or Q.settings
+    if button then Q.countSurface:SetPoint("RIGHT", button, "LEFT", -5, 0)
+    else Q.countSurface:SetPoint("RIGHT", Q.header, "RIGHT", -reserved - 8, 0) end
     Q.body:SetPoint("TOPLEFT", frame, "TOPLEFT", 0, integrated and 0 or -HEADER_HEIGHT)
     if not integrated then JoinPanels(true) end
 end
@@ -134,6 +140,30 @@ local function CreateTab(footer, key, label, anchor)
     button.label:SetText(label)
     T:Button(button)
     button:SetScript("OnClick", function() Q:SelectTab(key) end)
+    return button
+end
+
+local function CreateGPSButton(header)
+    local button = CreateFrame("Button", nil, header)
+    button:SetSize(32, 20)
+    button.ricoLabelColor = T.colors.mint
+    button.label = Text(button, 10, T.colors.mint, "CENTER")
+    button.label:SetPoint("CENTER")
+    button.label:SetText("GPS")
+    T:Button(button)
+    button:SetScript("OnClick", function(self)
+        HideTooltip(self)
+        RP.QuestRouteUI:Show()
+    end)
+    button:HookScript("OnEnter", function(self)
+        if not GameTooltip then return end
+        GameTooltip:SetOwner(self, "ANCHOR_LEFT")
+        GameTooltip:ClearLines()
+        GameTooltip:SetText("Quest routes")
+        GameTooltip:Show()
+    end)
+    button:HookScript("OnLeave", HideTooltip)
+    button:HookScript("OnHide", HideTooltip)
     return button
 end
 
@@ -172,14 +202,16 @@ function Q:Build()
     badge:SetSize(5, 5)
     badge:SetColorTexture(0.45, 0.85, 0.66, 0.94)
     badge:SetRotation(math.pi / 4)
-    self.title = Text(header, 15, T.colors.text)
+    self.title = Text(header, 14, T.colors.text)
     self.title:SetPoint("LEFT", 23, 0)
     self.countSurface = header:CreateTexture(nil, "ARTWORK")
-    self.countSurface:SetSize(72, 20)
+    self.countSurface:SetSize(62, 20)
     self.countSurface:SetColorTexture(0.064, 0.157, 0.123, 0.82)
     self.count = Text(header, 11, T.colors.mint, "CENTER")
     self.count:SetPoint("CENTER", self.countSurface, "CENTER")
+    self.title:SetPoint("RIGHT", self.countSurface, "LEFT", -6, 0)
     if RP.QuestTrackerSettings then self.settings = RP.QuestTrackerSettings:Create(self, header) end
+    if RP.QuestRouteUI then self.gpsButton = CreateGPSButton(header) end
     IntegrateHeader(frame, false)
 
     frame:EnableMouseWheel(true)
