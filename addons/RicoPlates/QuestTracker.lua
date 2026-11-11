@@ -3,7 +3,7 @@ local T = RP.Theme
 local Q = { rows = {} }
 RP.QuestTracker = Q
 
-local ROWS, WIDTH, ROW_HEIGHT, HEADER_HEIGHT = 7, 292, 36, 33
+local ROWS, WIDTH, ROW_HEIGHT, HEADER_HEIGHT = 7, 292, 36, 38
 local unpack = unpack or table.unpack
 
 local function Text(parent, size, color, justify)
@@ -70,39 +70,53 @@ end
 
 local function PaintRow(row, hover)
     local r, g, b = unpack(T.colors.accent)
+    local opacity = Q.panelOpacity or 1
     if hover then
-        row.surface:SetVertexColor(0.035 + 0.10 * r, 0.045 + 0.10 * g, 0.043 + 0.10 * b, 0.82)
+        row.surface:SetVertexColor(0.032 + 0.10 * r, 0.046 + 0.10 * g, 0.044 + 0.10 * b, 0.80 * opacity)
+    elseif row.alternate then
+        row.surface:SetVertexColor(0.041, 0.068, 0.060, 0.58 * opacity)
     else
-        row.surface:SetVertexColor(0.013, 0.024, 0.021, 0.56)
+        row.surface:SetVertexColor(0.021, 0.039, 0.033, 0.56 * opacity)
     end
-    local alpha = row.complete and 0.96 or hover and 0.72 or 0.26
+    local alpha = row.complete and 0.95 or hover and 0.70 or 0.34
     row.marker:SetColorTexture(r, g, b, alpha)
 end
 
-local function AddSmoke(frame)
-    local path = RP.media .. "QuestTrackerSmoke.tga"
-    local smoke = frame:CreateTexture(nil, "BACKGROUND", nil, -2)
-    smoke:SetTexture(path)
-    smoke:SetPoint("TOPLEFT", -24, 12)
-    smoke:SetPoint("BOTTOMRIGHT", 10, -24)
-    smoke:SetVertexColor(0.68, 0.83, 0.76, 0.55)
+function Q:ApplyAppearance()
+    if not self.header then return end
+    local db, defaults = RP.db, RP.defaults
+    local opacity = (db.questTrackerOpacity or defaults.questTrackerOpacity) / 100
+    local glow = db.questTrackerGlow ~= false and (db.questTrackerGlowStrength or defaults.questTrackerGlowStrength) / 100 or 0
+    self.panelOpacity = opacity
+    self.header.ricoBackground:SetVertexColor(0.047, 0.081, 0.070, opacity)
+    self.body.ricoBackground:SetVertexColor(0.027, 0.047, 0.042, opacity)
+    if self.headerGlow then self.headerGlow:SetStrength(glow) end
+    if self.bodyGlow then self.bodyGlow:SetStrength(glow) end
+    for _, row in ipairs(self.rows) do PaintRow(row, row.hover) end
+end
 
-    local glow = frame:CreateTexture(nil, "BACKGROUND", nil, -1)
-    glow:SetTexture(path)
-    glow:SetAllPoints(smoke)
-    glow:SetBlendMode("ADD")
-    glow:SetVertexColor(0.34, 1, 0.64)
+local function JoinPanels(joined)
+    joined = joined == true and Q.body:IsShown()
+    if Q.joined == joined then return end
+    Q.joined = joined
+    if Q.headerGlow then Q.headerGlow:SetJoinedEdge(joined and "BOTTOM" or nil) end
+    if Q.bodyGlow then Q.bodyGlow:SetJoinedEdge(joined and "TOP" or nil) end
+    Q.body.ricoBorder[1]:SetShown(not joined)
+end
 
-    local pulse = frame:CreateAnimationGroup()
-    pulse:SetLooping("BOUNCE")
-    local alpha = pulse:CreateAnimation("Alpha")
-    alpha:SetTarget(glow)
-    alpha:SetFromAlpha(0.28)
-    alpha:SetToAlpha(0.58)
-    alpha:SetDuration(1.8)
-    alpha:SetSmoothing("IN_OUT")
-    frame:HookScript("OnShow", function() pulse:Play() end)
-    frame:HookScript("OnHide", function() pulse:Stop() end)
+local function SetHeaderAdjacent(_, adjacent)
+    Q.headerAdjacent = adjacent
+    JoinPanels(adjacent)
+end
+
+local function IntegrateHeader(frame, integrated, rightReserve)
+    Q.headerIntegrated = integrated
+    Q.title:SetText(integrated and "All Objectives" or "Quests")
+    local reserved = rightReserve or 0
+    if Q.settings then Q.settings:SetPoint("RIGHT", Q.header, "RIGHT", -reserved - 6, 0) end
+    Q.countSurface:SetPoint("RIGHT", Q.header, "RIGHT", -reserved - (Q.settings and 32 or 8), 0)
+    Q.body:SetPoint("TOPLEFT", frame, "TOPLEFT", 0, integrated and 0 or -HEADER_HEIGHT)
+    if not integrated then JoinPanels(true) end
 end
 
 local function ScrollWheel(_, delta)
@@ -115,33 +129,52 @@ function Q:Build()
     self.frame = frame
     frame:SetSize(WIDTH, HEADER_HEIGHT)
     frame:Hide()
-    T:Panel(frame)
-    AddSmoke(frame)
-
-    local headerRule = frame:CreateTexture(nil, "BORDER")
-    headerRule:SetPoint("TOPLEFT", 6, -29)
-    headerRule:SetPoint("TOPRIGHT", -6, -29)
-    headerRule:SetHeight(1)
-    headerRule:SetColorTexture(0.31, 0.69, 0.53, 0.52)
-    if CreateColor and headerRule.SetGradient then
-        headerRule:SetGradient("HORIZONTAL", CreateColor(0.36, 0.89, 0.66, 0.69), CreateColor(0.24, 0.64, 0.46, 0.19))
+    local header = CreateFrame("Frame", nil, frame)
+    header:SetSize(WIDTH, HEADER_HEIGHT)
+    header:SetPoint("TOPRIGHT", frame, "TOPRIGHT")
+    self.header, frame.ricoHeader = header, header
+    frame.ricoSetHeaderIntegrated, frame.ricoSetHeaderAdjacent = IntegrateHeader, SetHeaderAdjacent
+    local body = CreateFrame("Frame", nil, frame)
+    self.body = body
+    body:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT")
+    T:Panel(header)
+    T:Panel(body)
+    if RP.QuestTrackerGlow then
+        self.headerGlow = RP.QuestTrackerGlow:Create(header)
+        self.bodyGlow = RP.QuestTrackerGlow:Create(body)
     end
 
-    local title = Text(frame, 15, T.colors.text)
-    title:SetPoint("TOPLEFT", 14, -6)
-    title:SetText("Quests")
-    local countSurface = frame:CreateTexture(nil, "ARTWORK")
-    countSurface:SetPoint("TOPRIGHT", -7, -6)
-    countSurface:SetSize(67, 18)
-    countSurface:SetColorTexture(0.032, 0.12, 0.086, 0.75)
-    self.count = Text(frame, 11, T.colors.mint, "RIGHT")
-    self.count:SetPoint("RIGHT", countSurface, "RIGHT", -7, 0)
+    local headerRule = header:CreateTexture(nil, "BORDER", nil, 1)
+    headerRule:SetPoint("TOPLEFT", 1, -1)
+    headerRule:SetPoint("TOPRIGHT", -1, -1)
+    headerRule:SetHeight(1)
+    headerRule:SetColorTexture(0.32, 0.68, 0.51, 0.72)
+    if CreateColor and headerRule.SetGradient then
+        headerRule:SetGradient("HORIZONTAL", CreateColor(0.42, 0.88, 0.67, 0.80), CreateColor(0.23, 0.54, 0.40, 0.30))
+    end
+
+    local badge = header:CreateTexture(nil, "ARTWORK")
+    badge:SetPoint("LEFT", 12, 0)
+    badge:SetSize(5, 5)
+    badge:SetColorTexture(0.45, 0.85, 0.66, 0.94)
+    badge:SetRotation(math.pi / 4)
+    self.title = Text(header, 15, T.colors.text)
+    self.title:SetPoint("LEFT", 23, 0)
+    self.countSurface = header:CreateTexture(nil, "ARTWORK")
+    self.countSurface:SetSize(72, 20)
+    self.countSurface:SetColorTexture(0.064, 0.157, 0.123, 0.82)
+    self.count = Text(header, 11, T.colors.mint, "CENTER")
+    self.count:SetPoint("CENTER", self.countSurface, "CENTER")
+    if RP.QuestTrackerSettings then self.settings = RP.QuestTrackerSettings:Create(self, header) end
+    IntegrateHeader(frame, false)
 
     frame:EnableMouseWheel(true)
     frame:SetScript("OnMouseWheel", ScrollWheel)
-    local scrollbar = CreateFrame("Slider", nil, frame)
+    header:EnableMouseWheel(true)
+    header:SetScript("OnMouseWheel", ScrollWheel)
+    local scrollbar = CreateFrame("Slider", nil, body)
     self.scrollbar = scrollbar
-    scrollbar:SetPoint("TOPRIGHT", -5, -HEADER_HEIGHT)
+    scrollbar:SetPoint("TOPRIGHT", -5, -4)
     scrollbar:SetPoint("BOTTOMRIGHT", -5, 7)
     scrollbar:SetWidth(9)
     scrollbar:SetOrientation("VERTICAL")
@@ -165,10 +198,16 @@ function Q:Build()
     scrollbar:Hide()
 
     for index = 1, ROWS do
-        local row = CreateFrame("Button", nil, frame)
+        local row = CreateFrame("Button", nil, body)
         row:SetSize(WIDTH - 22, ROW_HEIGHT - 2)
-        row:SetPoint("TOPLEFT", 6, -HEADER_HEIGHT - (index - 1) * ROW_HEIGHT)
+        row:SetPoint("TOPLEFT", 6, -3 - (index - 1) * ROW_HEIGHT)
+        row.alternate = index % 2 == 0
         row.surface = T:Fill(row)
+        local rowRule = row:CreateTexture(nil, "BORDER")
+        rowRule:SetPoint("BOTTOMLEFT", 1, 0)
+        rowRule:SetPoint("BOTTOMRIGHT", -1, 0)
+        rowRule:SetHeight(1)
+        rowRule:SetColorTexture(0.14, 0.26, 0.21, 0.42)
         row.marker = row:CreateTexture(nil, "ARTWORK")
         row.marker:SetPoint("TOPLEFT", 0, -5)
         row.marker:SetPoint("BOTTOMLEFT", 0, 5)
@@ -211,6 +250,7 @@ function Q:Build()
     frame:HookScript("OnHide", function()
         for _, row in ipairs(self.rows) do HideTooltip(row) end
     end)
+    self:ApplyAppearance()
 end
 
 function Q:RenderRows()
@@ -260,7 +300,10 @@ function Q:Refresh()
     local frame = self.frame
     local count = math.min(#quests, ROWS)
     local visible = total > 0
-    local height = HEADER_HEIGHT + count * ROW_HEIGHT + (count > 0 and 5 or 0)
+    local headerSpace = self.headerIntegrated and 0 or HEADER_HEIGHT
+    local height = math.max(1, headerSpace + count * ROW_HEIGHT + (count > 0 and 5 or 0))
+    if self.body:IsShown() ~= (count > 0) then self.body:SetShown(count > 0) end
+    JoinPanels(not self.headerIntegrated or self.headerAdjacent)
     if frame:GetHeight() ~= height then frame:SetHeight(height) end
     SetText(self.count, ("%d active"):format(total))
 
@@ -301,6 +344,7 @@ function Q:UpdateSettings()
         return
     end
     self:Build()
+    self:ApplyAppearance()
     local attached, reason = RP.QuestTrackerNative:Attach(self.frame)
     if reason == "combat" and self.attached then return end
     self.attached = attached

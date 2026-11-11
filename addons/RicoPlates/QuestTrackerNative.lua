@@ -17,6 +17,101 @@ end
 
 local function Ignore() end
 
+local function CapturePoints(frame)
+    local points = {}
+    for index = 1, frame:GetNumPoints() do points[index] = { frame:GetPoint(index) } end
+    return points
+end
+
+local function RestorePoints(frame, points)
+    frame:ClearAllPoints()
+    for _, point in ipairs(points) do frame:SetPoint(unpack(point, 1, 5)) end
+end
+
+local function CollapseArt(button)
+    local art = button.ricoQuestCollapseArt
+    if art then return art end
+
+    local background = button:CreateTexture(nil, "BACKGROUND")
+    background:SetAllPoints()
+    background:SetColorTexture(0.07, 0.14, 0.11, 0.92)
+    local hover = button:CreateTexture(nil, "HIGHLIGHT")
+    hover:SetAllPoints()
+    hover:SetColorTexture(0.33, 0.79, 0.59, 0.22)
+    local label = button:CreateFontString(nil, "OVERLAY")
+    label:SetFont(RP.Theme and RP.Theme.font or "Fonts\\FRIZQT__.TTF", 14, "")
+    label:SetPoint("CENTER", 0, 0)
+    label:SetTextColor(0.76, 0.93, 0.85)
+    art = { background, hover, label, label = label }
+    button.ricoQuestCollapseArt = art
+    return art
+end
+
+local function DimStock(skin, region)
+    if not region or skin.stock[region] ~= nil then return end
+    skin.stock[region] = region:GetAlpha()
+    region:SetAlpha(0)
+end
+
+local function UpdateHeader(attachment, collapsed, showBody)
+    local skin = attachment.header
+    if not skin then return end
+    local frame, container, host = attachment.frame, attachment.container, attachment.host
+    local filter = skin.native.FilterButton
+    local reserve = filter and filter:IsShown() and 44 or 22
+    if skin.reserve ~= reserve then
+        skin.reserve = reserve
+        frame:ricoSetHeaderIntegrated(true, reserve)
+    end
+    if skin.collapsed ~= collapsed then
+        skin.collapsed = collapsed
+        skin.collapseArt.label:SetText(collapsed and "+" or "−")
+    end
+    local padding = container.topModulePadding
+    local joined = showBody and not collapsed and padding == skin.view:GetHeight()
+        and container.GetHeightToModule and container:GetHeightToModule(host) == padding or false
+    if skin.joined ~= joined then
+        skin.joined = joined
+        frame:ricoSetHeaderAdjacent(joined)
+    end
+end
+
+local function AttachHeader(attachment)
+    local frame, native = attachment.frame, attachment.container.Header
+    local view = frame.ricoHeader
+    if not (view and native and native.Background and native.Text and native.MinimizeButton
+        and frame.ricoSetHeaderIntegrated and frame.ricoSetHeaderAdjacent) then return end
+
+    local skin = { native = native, view = view, parent = view:GetParent(), points = CapturePoints(view),
+        level = view:GetFrameLevel(), stock = {}, collapseArt = CollapseArt(native.MinimizeButton) }
+    attachment.header = skin
+    DimStock(skin, native.Background)
+    DimStock(skin, native.Text)
+    DimStock(skin, native.MinimizeButton:GetNormalTexture())
+    DimStock(skin, native.MinimizeButton:GetPushedTexture())
+    DimStock(skin, native.MinimizeButton:GetHighlightTexture())
+    for _, region in ipairs(skin.collapseArt) do region:Show() end
+
+    view:SetParent(native)
+    view:ClearAllPoints()
+    view:SetPoint("TOPRIGHT", native, "TOPRIGHT", 0, 0)
+    view:SetFrameLevel(native:GetFrameLevel())
+    UpdateHeader(attachment, attachment.container:IsCollapsed(), false)
+end
+
+local function DetachHeader(attachment)
+    local skin = attachment.header
+    if not skin then return end
+    for region, alpha in pairs(skin.stock) do region:SetAlpha(alpha) end
+    for _, region in ipairs(skin.collapseArt) do region:Hide() end
+    skin.view:SetParent(skin.parent)
+    RestorePoints(skin.view, skin.points)
+    skin.view:SetFrameLevel(skin.level)
+    attachment.header = nil
+    attachment.frame:ricoSetHeaderAdjacent(false)
+    attachment.frame:ricoSetHeaderIntegrated(false, 0)
+end
+
 local function CreateParking(manager, container)
     -- The Blizzard container template calls ManagedFrameMixin:OnShow during creation.
     -- A hidden holder needs the module registry methods, but no managed layout.
@@ -57,6 +152,8 @@ local function CreateHost(container)
         if resize then self:SetHeight(usedHeight) end
         if visibilityChanged then self:SetShown(show) end
         self.ricoUsedHeight = usedHeight
+        local attachment = A.attachment
+        if attachment and attachment.host == self then UpdateHeader(attachment, collapsed, show) end
         return usedHeight, false
     end
     return host
@@ -81,6 +178,7 @@ function A:Detach(frame)
 
     local manager, container, parking, host = attachment.manager, attachment.container, attachment.parking, attachment.host
     attachment.attached = nil
+    DetachHeader(attachment)
     host:Hide()
     host.ricoViewHeight, host.ricoUsedHeight = nil, nil
     if manager:GetContainerForModule(host) == container and not Move(manager, host, parking) then return false end
@@ -93,8 +191,7 @@ function A:Detach(frame)
 
     if frame:GetParent() == host then
         frame:SetParent(attachment.parent)
-        frame:ClearAllPoints()
-        for _, point in ipairs(attachment.points) do frame:SetPoint(unpack(point, 1, 5)) end
+        RestorePoints(frame, attachment.points)
     end
     self.attachment = nil
     container:MarkDirty()
@@ -143,9 +240,7 @@ function A:Attach(frame)
     if not parking or not host then return false, "pending" end
     host.uiOrder = order
 
-    local points = {}
-    for index = 1, frame:GetNumPoints() do points[index] = { frame:GetPoint(index) } end
-    self.attachment = { frame = frame, parent = frame:GetParent(), points = points, manager = manager,
+    self.attachment = { frame = frame, parent = frame:GetParent(), points = CapturePoints(frame), manager = manager,
         container = container, parking = parking, host = host, stock = stock }
     for _, module in ipairs(stock) do
         if not Move(manager, module, parking) then self:Detach(frame); return false, "pending" end
@@ -156,6 +251,7 @@ function A:Attach(frame)
     frame:ClearAllPoints()
     frame:SetPoint("TOPRIGHT", host, "TOPRIGHT", 0, 0)
     self.attachment.attached = true
+    AttachHeader(self.attachment)
     self:LayoutChanged(frame)
     return true
 end

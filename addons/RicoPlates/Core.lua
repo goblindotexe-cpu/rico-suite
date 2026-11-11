@@ -1,6 +1,6 @@
 local addonName, RP = ...
 _G.RicoPlates = RP
-RP.name, RP.version = addonName, "1.26.0"
+RP.name, RP.version = addonName, "1.27.0"
 RP.media = "Interface\\AddOns\\" .. addonName .. "\\Media\\"
 RP.defaults = {
     enabled = true, showFriendlyNPCs = false,
@@ -10,6 +10,7 @@ RP.defaults = {
     scale = 1, fontSize = 11, verticalOffset = 0, bubbles = true,
     bubbleCount = 3, bubbleScale = 1.8, maxAnimatedPlates = 24,
     questMarkers = true, questText = false, useQuestie = true, questRoutes = true, compactQuestTracker = true,
+    questTrackerGlow = true, questTrackerGlowStrength = 35, questTrackerOpacity = 100,
     showDebuffs = true, debuffSize = 18, maxDebuffs = 6, debuffsMineOnly = false,
     showBuffs = true, buffSize = 18, maxBuffs = 6, buffsMineOnly = false, targetBuffsAll = true,
     grayTapped = true, grayTrivial = false,
@@ -148,6 +149,8 @@ function RP:ValidateSettings()
     d.partyFrameWidth = Clamp(math.floor(d.partyFrameWidth), 140, 260)
     d.partyFrameHeight = Clamp(math.floor(d.partyFrameHeight), 16, 26)
     d.partyLowHealthThreshold = Clamp(math.floor(d.partyLowHealthThreshold), 10, 50)
+    d.questTrackerGlowStrength = Clamp(math.floor(d.questTrackerGlowStrength or self.defaults.questTrackerGlowStrength), 0, 100)
+    d.questTrackerOpacity = Clamp(math.floor(d.questTrackerOpacity or self.defaults.questTrackerOpacity), 25, 100)
     d.bubbleCount = Clamp(math.floor(d.bubbleCount), 1, 5)
     d.bubbleScale = Clamp(d.bubbleScale, 1, 2.6)
     d.maxAnimatedPlates = Clamp(math.floor(d.maxAnimatedPlates), 0, 40)
