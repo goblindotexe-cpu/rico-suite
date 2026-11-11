@@ -24,10 +24,12 @@ local function SetText(text, value)
     end
 end
 
-local function DistanceLabel(distance)
-    if not distance then return "—" end
-    if distance >= 1000 then return ("%.1fk yd"):format(distance / 1000) end
-    return ("%d yd"):format(math.floor(distance + 0.5))
+local function DistanceLabel(yards)
+    if not yards then return "—" end
+    local meters = yards * 0.9144
+    local roundedMeters = math.floor(meters + 0.5)
+    if roundedMeters >= 1000 then return ("%.1f km"):format(meters / 1000) end
+    return ("%d m"):format(roundedMeters)
 end
 
 local function HideTooltip(row)
@@ -77,6 +79,36 @@ local function PaintRow(row, hover)
     row.marker:SetColorTexture(r, g, b, alpha)
 end
 
+local function AddSmoke(frame)
+    local path = RP.media .. "QuestTrackerSmoke.tga"
+    local smoke = frame:CreateTexture(nil, "BACKGROUND", nil, -2)
+    smoke:SetTexture(path)
+    smoke:SetPoint("TOPLEFT", -24, 12)
+    smoke:SetPoint("BOTTOMRIGHT", 10, -24)
+    smoke:SetVertexColor(0.68, 0.83, 0.76, 0.55)
+
+    local glow = frame:CreateTexture(nil, "BACKGROUND", nil, -1)
+    glow:SetTexture(path)
+    glow:SetAllPoints(smoke)
+    glow:SetBlendMode("ADD")
+    glow:SetVertexColor(0.34, 1, 0.64)
+
+    local pulse = frame:CreateAnimationGroup()
+    pulse:SetLooping("BOUNCE")
+    local alpha = pulse:CreateAnimation("Alpha")
+    alpha:SetTarget(glow)
+    alpha:SetFromAlpha(0.28)
+    alpha:SetToAlpha(0.58)
+    alpha:SetDuration(1.8)
+    alpha:SetSmoothing("IN_OUT")
+    frame:HookScript("OnShow", function() pulse:Play() end)
+    frame:HookScript("OnHide", function() pulse:Stop() end)
+end
+
+local function ScrollWheel(_, delta)
+    Q:SetScrollOffset((Q.scrollOffset or 0) - delta)
+end
+
 function Q:Build()
     if self.frame then return end
     local frame = CreateFrame("Frame", "RicoPlatesCompactQuestTracker", UIParent)
@@ -84,12 +116,7 @@ function Q:Build()
     frame:SetSize(WIDTH, HEADER_HEIGHT)
     frame:Hide()
     T:Panel(frame)
-
-    local smoke = frame:CreateTexture(nil, "BACKGROUND", nil, 1)
-    smoke:SetTexture(RP.media .. "QuestTrackerSmoke")
-    smoke:SetPoint("TOPLEFT", 1, -1)
-    smoke:SetPoint("BOTTOMRIGHT", -1, 1)
-    smoke:SetAlpha(0.54)
+    AddSmoke(frame)
 
     local headerRule = frame:CreateTexture(nil, "BORDER")
     headerRule:SetPoint("TOPLEFT", 6, -29)
@@ -110,9 +137,36 @@ function Q:Build()
     self.count = Text(frame, 11, T.colors.mint, "RIGHT")
     self.count:SetPoint("RIGHT", countSurface, "RIGHT", -7, 0)
 
+    frame:EnableMouseWheel(true)
+    frame:SetScript("OnMouseWheel", ScrollWheel)
+    local scrollbar = CreateFrame("Slider", nil, frame)
+    self.scrollbar = scrollbar
+    scrollbar:SetPoint("TOPRIGHT", -5, -HEADER_HEIGHT)
+    scrollbar:SetPoint("BOTTOMRIGHT", -5, 7)
+    scrollbar:SetWidth(9)
+    scrollbar:SetOrientation("VERTICAL")
+    scrollbar:SetValueStep(1)
+    scrollbar:SetObeyStepOnDrag(true)
+    scrollbar:EnableMouse(true)
+    scrollbar:EnableMouseWheel(true)
+    scrollbar:SetScript("OnMouseWheel", ScrollWheel)
+    scrollbar:SetScript("OnValueChanged", function(slider, value)
+        if not slider.updatingRange then Q:SetScrollOffset(value) end
+    end)
+    local track = scrollbar:CreateTexture(nil, "BACKGROUND")
+    track:SetPoint("TOP")
+    track:SetPoint("BOTTOM")
+    track:SetWidth(2)
+    track:SetColorTexture(0.18, 0.34, 0.27, 0.7)
+    scrollbar:SetThumbTexture("Interface\\Buttons\\WHITE8X8")
+    local thumb = scrollbar:GetThumbTexture()
+    thumb:SetSize(5, 20)
+    thumb:SetVertexColor(0.43, 0.85, 0.63, 0.9)
+    scrollbar:Hide()
+
     for index = 1, ROWS do
         local row = CreateFrame("Button", nil, frame)
-        row:SetSize(WIDTH - 12, ROW_HEIGHT - 2)
+        row:SetSize(WIDTH - 22, ROW_HEIGHT - 2)
         row:SetPoint("TOPLEFT", 6, -HEADER_HEIGHT - (index - 1) * ROW_HEIGHT)
         row.surface = T:Fill(row)
         row.marker = row:CreateTexture(nil, "ARTWORK")
@@ -122,13 +176,19 @@ function Q:Build()
         PaintRow(row, false)
         row.title = Text(row, 12, T.colors.text)
         row.title:SetPoint("TOPLEFT", 10, -4)
-        row.title:SetWidth(WIDTH - 92)
+        row.title:SetWidth(WIDTH - 123)
         row.distance = Text(row, 11, T.colors.mint, "RIGHT")
-        row.distance:SetPoint("TOPRIGHT", -8, -5)
-        row.distance:SetWidth(62)
+        row.distance:SetPoint("TOPRIGHT", -34, -5)
+        row.distance:SetWidth(52)
         row.detail = Text(row, 10, T.colors.muted)
         row.detail:SetPoint("BOTTOMLEFT", 10, 5)
-        row.detail:SetWidth(WIDTH - 31)
+        row.detail:SetWidth(WIDTH - 61)
+        if RP.QuestTrackerItems then
+            row.item = RP.QuestTrackerItems:Create(row, ScrollWheel)
+            if row.item then row.item:SetPoint("RIGHT", -5, 0) end
+        end
+        row:EnableMouseWheel(true)
+        row:SetScript("OnMouseWheel", ScrollWheel)
         row:SetScript("OnClick", OpenQuest)
         row:SetScript("OnEnter", function(button)
             button.hover = true
@@ -148,22 +208,14 @@ function Q:Build()
         row:Hide()
         self.rows[index] = row
     end
-    frame:SetScript("OnHide", function()
+    frame:HookScript("OnHide", function()
         for _, row in ipairs(self.rows) do HideTooltip(row) end
     end)
 end
 
-function Q:Refresh()
-    if not self.attached then return end
-    local quests, total = RP.QuestTrackerData:Refresh()
-    local frame = self.frame
-    local count = math.min(#quests, ROWS)
-    local visible = total > 0
-    local height = HEADER_HEIGHT + count * ROW_HEIGHT + (count > 0 and 5 or 0)
-    if frame:GetHeight() ~= height then frame:SetHeight(height) end
-    SetText(self.count, ("%d active"):format(total))
+function Q:RenderRows()
     for index, row in ipairs(self.rows) do
-        local quest = quests[index]
+        local quest = self.quests[index + self.scrollOffset]
         local previous = row.quest
         row.quest = quest
         if quest then
@@ -188,7 +240,42 @@ function Q:Refresh()
             end
         end
         if row:IsShown() ~= (quest ~= nil) then row:SetShown(quest ~= nil) end
+        if row.item then RP.QuestTrackerItems:Update(row.item, quest) end
     end
+end
+
+function Q:SetScrollOffset(value)
+    if not self.attached then return end
+    local offset = math.max(0, math.min(self.scrollMax, math.floor(value + 0.5)))
+    if self.scrollOffset == offset then return end
+    self.scrollOffset = offset
+    if self.scrollbar:GetValue() ~= offset then self.scrollbar:SetValue(offset) end
+    self:RenderRows()
+end
+
+function Q:Refresh()
+    if not self.attached then return end
+    local quests, total = RP.QuestTrackerData:Refresh()
+    self.quests = quests
+    local frame = self.frame
+    local count = math.min(#quests, ROWS)
+    local visible = total > 0
+    local height = HEADER_HEIGHT + count * ROW_HEIGHT + (count > 0 and 5 or 0)
+    if frame:GetHeight() ~= height then frame:SetHeight(height) end
+    SetText(self.count, ("%d active"):format(total))
+
+    local scrollbar = self.scrollbar
+    local scrollMax = math.max(0, #quests - ROWS)
+    self.scrollOffset = math.min(self.scrollOffset or 0, scrollMax)
+    if self.scrollMax ~= scrollMax then
+        self.scrollMax = scrollMax
+        scrollbar.updatingRange = true
+        scrollbar:SetMinMaxValues(0, math.max(1, scrollMax))
+        scrollbar.updatingRange = nil
+        scrollbar:SetShown(scrollMax > 0)
+    end
+    if scrollbar:GetValue() ~= self.scrollOffset then scrollbar:SetValue(self.scrollOffset) end
+    self:RenderRows()
     if frame:IsShown() ~= visible then frame:SetShown(visible) end
     RP.QuestTrackerNative:LayoutChanged(frame)
 end
@@ -207,6 +294,7 @@ function Q:UpdateSettings()
         self.questieNotice = nil
         if self.frame and RP.QuestTrackerNative:Detach(self.frame) then
             self.attached = nil
+            self.scrollOffset = 0
             self.frame:SetScript("OnUpdate", nil)
             self.frame:Hide()
         end

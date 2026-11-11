@@ -3,7 +3,7 @@ local _, RP = ...
 local T = { destinations = {} }
 RP.QuestTrackerData = T
 
-local MAX_ROWS, DESTINATION_REFRESH = 7, 10
+local DESTINATION_REFRESH = 10
 
 local function Call(fn, ...)
     if type(fn) == "function" then return pcall(fn, ...) end
@@ -152,7 +152,5 @@ function T:Refresh()
         if first == second then return a.order < b.order end
         return first < second
     end)
-    local rows = {}
-    for index = 1, math.min(MAX_ROWS, #self.entries) do rows[index] = self.entries[index] end
-    return rows, self.total
+    return self.entries, self.total
 end
