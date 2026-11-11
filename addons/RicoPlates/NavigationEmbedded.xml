@@ -89,4 +89,5 @@
 	<Script file="Vendor\SPF\Core\RestedXP.lua"/>
 	<Script file="Vendor\SPF\UI\DestinationPin.lua"/>
 	<Script file="Vendor\SPF\RicoPathBridge.lua"/>
+	<Script file="NavigationSkin.lua"/>
 </Ui>
