@@ -488,6 +488,13 @@ function U:Build()
                 GameTooltip:AddLine("Share of recorded fishing loot windows with this catch", 0.73, 0.82, 0.79)
                 if location.rate.scope == "zone" then GameTooltip:AddLine("Source: Efficient Games / EG Link", 0.73, 0.82, 0.79) end
             end
+            if not F.Map:ValidPoint(self.x, self.y) then
+                GameTooltip:AddLine("Pin and GPS need published coordinates for this fish.", 0.91, 0.73, 0.43, true)
+            elseif not self.hasPoint then
+                GameTooltip:AddLine("This map is unavailable in the current client.", 0.91, 0.73, 0.43, true)
+            elseif not self.gps:IsEnabled() then
+                GameTooltip:AddLine("Rico GPS requires the current RicoPlates addon.", 0.91, 0.73, 0.43, true)
+            end
             GameTooltip:Show()
         end)
         local function HideTooltip(self)
@@ -501,6 +508,15 @@ function U:Build()
     self.locationStatus:SetPoint("TOPLEFT", 353, -515)
     self.locationStatus:SetWidth(485)
     self.pinsCheck = Check(frame, "Show fish icons on map and minimap", "pins", 350, -541)
+    self.pinsCheck:HookScript("OnEnter", function(check)
+        if not (GameTooltip and F.Map.GetStatus) then return end
+        GameTooltip:SetOwner(check, "ANCHOR_LEFT")
+        GameTooltip:SetText(F.Map:GetStatus())
+        GameTooltip:Show()
+    end)
+    self.pinsCheck:HookScript("OnLeave", function(check)
+        if GameTooltip and GameTooltip:IsOwned(check) then GameTooltip:Hide() end
+    end)
     frame:Hide()
     self.building = false
 end
@@ -508,6 +524,10 @@ end
 function U:RefreshLocations(entry)
     local locations = F:GetFishingLocations(entry)
     local pages = math.max(1, math.ceil(#locations / 3))
+    local pinCount = 0
+    for _, location in ipairs(locations) do
+        if F:GetFishingPoint(location) and F.Map:MapUsable(location) then pinCount = pinCount + 1 end
+    end
     self.locationPage = math.max(1, math.min(pages, self.locationPage))
     for index, row in ipairs(self.locationRows) do
         local location = locations[(self.locationPage - 1) * 3 + index]
@@ -518,19 +538,32 @@ function U:RefreshLocations(entry)
             row.x, row.y = x, y
             local point = F.Map:ValidPoint(x, y)
             local name = location.subzone or location.zone or tostring(location.mapID or "Unknown area")
-            if point then name = name .. ("  •  %.2f, %.2f"):format(x * 100, y * 100) end
+            if location.subzone and location.zone and location.subzone ~= location.zone then
+                name = location.zone .. " · " .. location.subzone
+            end
+            if point then
+                name = name .. ("  •  %.2f, %.2f"):format(x * 100, y * 100)
+            else
+                name = name .. (location.subzone and "  •  area only" or "  •  zone only")
+            end
             row.name:SetText(name)
             local label = F:FormatFishingRate(location) or (F:DescribeFishingLocation(location) .. " • rate unknown")
             row.status:SetText(label)
             row.status:SetTextColor(unpack((location.rate or location.observed) and COLORS.green or COLORS.amber))
             local usable = F.Map:MapUsable(location)
+            row.hasPoint = usable and point
             row.open:SetEnabled(usable)
             row.follow:SetEnabled(usable and point)
             row.gps:SetEnabled(usable and point and (not F.Map.GPSAvailable or F.Map:GPSAvailable()))
         end
     end
-    self.locationStatus:SetText(#locations > 0 and string.format("Spots %d/%d • catch rates are per fishing loot window", self.locationPage, pages)
-        or "No fishing locations have been recorded for this catch.")
+    if #locations == 0 then
+        self.locationStatus:SetText("No fishing locations have been recorded for this catch.")
+    elseif pinCount == 0 then
+        self.locationStatus:SetText(("Spots %d/%d • No published pin coordinates for this catch."):format(self.locationPage, pages))
+    else
+        self.locationStatus:SetText(("Spots %d/%d • %d locations with pins"):format(self.locationPage, pages, pinCount))
+    end
 end
 
 function U:Refresh()

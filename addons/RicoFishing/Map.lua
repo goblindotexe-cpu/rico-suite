@@ -409,6 +409,8 @@ end
 
 function M:GetStatus()
     if not F.db or not F.db.pins then return "Fishing markers: off." end
+    if self.entry and #self.points == 0 then return "No published pin coordinates for " .. self.entry.name .. "." end
+    if self.entry and self.miniCount == 0 then return "No spots for " .. self.entry.name .. " within minimap range." end
     return string.format("Fishing markers: %d on the world map, %d nearby on the minimap.", self.worldCount, self.miniCount)
 end
 

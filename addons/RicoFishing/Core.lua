@@ -1,6 +1,6 @@
 local addonName, F = ...
 _G.RicoFishing = F
-F.name, F.version = addonName, "1.10.0"
+F.name, F.version = addonName, "1.10.1"
 F.session = { items = {}, quantity = 0, loots = 0 }
 F.defaults = { selected = 6291, goal = 20, pins = true, hud = true, oneKey = true, fishingKey = "F",
     lureTimer = true, bagWarning = true, favoriteAlerts = true, fishingPrompt = true, recentCatches = true, hudX = 0, hudY = 165 }

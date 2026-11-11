@@ -2,7 +2,7 @@
 ## Title: RicoFishing
 ## Notes: One-key fishing, catch rates, and fishing spot pins with Rico GPS for WoW Forever.
 ## Author: Rico
-## Version: 1.10.0
+## Version: 1.10.1
 ## SavedVariables: RicoFishingDB, RicoSuiteDB
 ## SavedVariablesPerCharacter: RicoFishingLogDB
 Data.lua

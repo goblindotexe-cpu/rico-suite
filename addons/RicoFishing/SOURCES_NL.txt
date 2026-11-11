@@ -149,6 +149,25 @@ zijn niet als directe Forever-vangsten in de catalogus gezet.
 Er is ook geen gesloten code of complete gids gekopieerd uit Forever Fishing,
 vanThos Fishing Journal of R.E.E.L.
 
+GEDOCUMENTEERDE VISPLEKKEN
+
+Vijf visplekken in Darkshore en Ashenvale komen uit de openbare
+Forever-veldnotities van GildedVellum bij FishFry 1.4.5 (15 oktober 2026).
+Alleen de genoemde toegangscoördinaten en de gekoppelde vissoorten uit de
+RicoFishing-catalogus zijn overgenomen. Een zonepercentage blijft een meting
+voor de hele zone.
+
+https://www.curseforge.com/wow/addons/fishfry-forever/files/9190872
+
+Elf openbare Fishing-kaartpunten van Raw Bristle Whisker Catfish komen
+uit de itemkaart van ForeverDB.app, geraadpleegd op 11 november 2026.
+Deze punten liggen in Thunder Bluff, Orgrimmar, Stonetalon Mountains,
+Desolace en Stranglethorn Vale. De kaart vermeldt ook andere bronsoorten.
+Alleen de vislocaties zijn opgenomen. Het algemene ForeverDB-percentage
+geldt niet per kaartpunt en is niet overgenomen.
+
+https://www.foreverdb.app/en/forever/items/6308/raw-bristle-whisker-catfish
+
 KAARTPUNTEN EN TELLERS
 
 Een pin gebruikt een openbaar vangstpunt voor de geselecteerde vis. Een bron
