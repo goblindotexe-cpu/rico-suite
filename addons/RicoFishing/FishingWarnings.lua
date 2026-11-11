@@ -286,10 +286,10 @@ local function AddSmoke(parent, anchor, file, width, height, x, y, opacity)
     return glow
 end
 
-local function PulseAlpha(group, target, low, high, duration)
+local function PulseAlpha(group, target, low, high, duration, order)
     local alpha = group:CreateAnimation("Alpha")
     alpha:SetTarget(target)
-    alpha:SetOrder(1)
+    alpha:SetOrder(order or 1)
     alpha:SetFromAlpha(low)
     alpha:SetToAlpha(high)
     alpha:SetDuration(duration)
@@ -362,6 +362,9 @@ function W:CreatePrompt()
 end
 
 local RECENT_SLOTS = 10
+local SLOT_SIZE, SLOT_GAP = 30, 5
+local SLOT_EDGE = { 0.19, 0.28, 0.23, 1 }
+local LATEST_EDGE = { 0.23, 0.66, 0.47, 1 }
 
 local function HideCatchTooltip(slot)
     if GameTooltip and GameTooltip:IsOwned(slot) then GameTooltip:Hide() end
@@ -397,9 +400,27 @@ local function CatchName(hud, catch)
     return catch.count > 1 and (name .. " ×" .. catch.count) or name
 end
 
+local function ClearCatchSpark(hud)
+    hud.sparkRow, hud.sparkSlot = nil, nil
+    hud.spark:Hide()
+end
+
+local function PositionCatchSpark(hud, slot)
+    if hud.sparkSlot == slot then return end
+    hud.sparkSlot = slot
+    hud.spark:ClearAllPoints()
+    hud.spark:SetPoint("CENTER", slot, "CENTER")
+end
+
 function W:RefreshRecentCatches()
     local hud = self.hud
     if not hud then return end
+    local log = F.SessionLog
+    local catches = log and log:GetRecentCatches()
+    local newest = catches and catches[1]
+    local previous = hud.newestCatch
+    local newRows = hud.catchListReady and newest ~= previous
+    hud.catchListReady, hud.newestCatch = true, newest
     local shown = self.pole ~= nil and F.db.recentCatches == true
     hud:SetShown(shown)
     local anchor = shown and hud or F.UI.hud
@@ -410,19 +431,26 @@ function W:RefreshRecentCatches()
     end
     if not shown then return end
 
-    local catches = F.SessionLog and F.SessionLog:GetRecentCatches()
-    local name = CatchName(hud, catches and catches[1])
+    local name = CatchName(hud, newest)
     if hud.catchName ~= name then
         hud.catchName = name
         hud.name:SetText(name)
     end
+    local wanted = log and log:GetWantedCatch()
+    local startSlot, activeSlot
     for index, slot in ipairs(hud.slots) do
         local catch = catches and catches[index]
+        if catch == previous then newRows = false end
         local id, link = catch and catch.id, catch and catch.link
+        if catch and newRows and id == wanted and not startSlot then
+            startSlot, hud.sparkRow = slot, catch
+        end
+        if catch and catch == hud.sparkRow then activeSlot = slot end
         local changed = slot.itemID ~= id or slot.itemLink ~= link
         if (slot.itemID ~= nil) ~= (id ~= nil) then
             slot.icon:SetShown(id ~= nil)
             slot:EnableMouse(id ~= nil)
+            if index == 1 then slot.edge:SetColorTexture(unpack(id and LATEST_EDGE or SLOT_EDGE)) end
         end
         slot.itemID, slot.itemLink = id, link
         if catch then
@@ -441,25 +469,60 @@ function W:RefreshRecentCatches()
             if id then ShowCatchTooltip(slot) else HideCatchTooltip(slot) end
         end
     end
+    if startSlot then
+        hud.sparkPulse:Stop()
+        PositionCatchSpark(hud, startSlot)
+        hud.spark:Show()
+        hud.sparkPulse:Play()
+    elseif activeSlot then
+        PositionCatchSpark(hud, activeSlot)
+    elseif hud.sparkRow then
+        hud.sparkPulse:Stop()
+        ClearCatchSpark(hud)
+    end
+end
+
+local function CatchPixelSize(hud, size)
+    if PixelUtil and PixelUtil.GetNearestPixelSize then
+        return PixelUtil.GetNearestPixelSize(size, hud:GetEffectiveScale(), 1)
+    end
+    return size
+end
+
+local function LayoutCatchSlots(hud)
+    local size, gap = CatchPixelSize(hud, SLOT_SIZE), CatchPixelSize(hud, SLOT_GAP)
+    local edge, inset = CatchPixelSize(hud, 1), CatchPixelSize(hud, 2)
+    local rowWidth = RECENT_SLOTS * size + (RECENT_SLOTS - 1) * gap
+    local start = CatchPixelSize(hud, (hud:GetWidth() - rowWidth) / 2)
+    local bottom = CatchPixelSize(hud, 8)
+    for index, slot in ipairs(hud.slots) do
+        slot:SetSize(size, size)
+        slot:ClearAllPoints()
+        slot:SetPoint("BOTTOMLEFT", hud, "BOTTOMLEFT", start + (index - 1) * (size + gap), bottom)
+        slot.fill:ClearAllPoints()
+        slot.fill:SetPoint("TOPLEFT", slot, "TOPLEFT", edge, -edge)
+        slot.fill:SetPoint("BOTTOMRIGHT", slot, "BOTTOMRIGHT", -edge, edge)
+        slot.icon:SetSize(size - 2 * inset, size - 2 * inset)
+    end
 end
 
 function W:CreateRecentCatches()
     local hud = CreateFrame("Frame", nil, UIParent)
     self.hud = hud
     hud:Hide()
-    hud:SetSize(328, 57)
+    hud:SetSize(370, 63)
     hud:SetPoint("BOTTOM", F.UI.hud, "TOP", 0, 4)
     hud:SetFrameStrata("MEDIUM")
     hud:SetClampedToScreen(true)
-    Metal(hud, 2, 2, 324, 53, 7)
-    local glow = AddSmoke(hud, hud, "CatchStripSmoke.tga", 520, 140, 0, 0, 0.36)
+    Metal(hud, 2, 2, 366, 59, 7)
+    local glow = AddSmoke(hud, hud, "CatchStripSmoke.tga", 556, 148, 0, 0, 0.36)
 
     local heading = PromptText(hud, 11, MINT)
     heading:SetPoint("TOPLEFT", 16, -9)
     heading:SetText("Latest catch")
     hud.name = PromptText(hud, 12, { 0.93, 0.98, 0.95 })
     hud.name:SetPoint("LEFT", heading, "RIGHT", 10, 0)
-    hud.name:SetWidth(222)
+    hud.name:SetWidth(260)
     hud.name:SetJustifyH("LEFT")
     hud.name:SetWordWrap(false)
 
@@ -467,15 +530,17 @@ function W:CreateRecentCatches()
     for index = 1, RECENT_SLOTS do
         local slot = CreateFrame("Frame", nil, hud)
         hud.slots[index] = slot
-        slot:SetSize(25, 25)
-        slot:SetPoint("BOTTOMLEFT", 16 + (index - 1) * 30, 8)
         slot:EnableMouse(false)
-        local edge = index == 1 and { 0.23, 0.66, 0.47 } or { 0.16, 0.24, 0.20 }
-        Rect(slot, "BACKGROUND", 0, 0, 25, 25, edge[1], edge[2], edge[3], 1)
-        Rect(slot, "BORDER", 1, 1, 23, 23, 0.027, 0.045, 0.036, 1)
+        slot.edge = slot:CreateTexture(nil, "BACKGROUND")
+        slot.edge:SetAllPoints(slot)
+        slot.edge:SetColorTexture(unpack(SLOT_EDGE))
+        slot.fill = slot:CreateTexture(nil, "BORDER")
+        slot.fill:SetColorTexture(0.027, 0.045, 0.036, 1)
+        slot.edge:SetSnapToPixelGrid(true)
+        slot.fill:SetSnapToPixelGrid(true)
         slot.icon = slot:CreateTexture(nil, "ARTWORK")
         slot.icon:SetPoint("CENTER")
-        slot.icon:SetSize(21, 21)
+        slot.icon:SetSnapToPixelGrid(true)
         slot.icon:SetTexCoord(0.07, 0.93, 0.07, 0.93)
         slot.icon:Hide()
         slot.count = PromptText(slot, 10, { 0.96, 1, 0.97 })
@@ -484,6 +549,22 @@ function W:CreateRecentCatches()
         slot:SetScript("OnLeave", HideCatchTooltip)
         slot:SetScript("OnHide", HideCatchTooltip)
     end
+    LayoutCatchSlots(hud)
+    hud:RegisterEvent("UI_SCALE_CHANGED")
+    hud:RegisterEvent("DISPLAY_SIZE_CHANGED")
+    hud:SetScript("OnEvent", LayoutCatchSlots)
+
+    -- The strip is behind this flash and the slot frames are above it.
+    hud.spark = hud:CreateTexture(nil, "OVERLAY", nil, -1)
+    hud.spark:SetTexture("Interface\\AddOns\\" .. F.name .. "\\Media\\WantedCatchSpark.tga")
+    hud.spark:SetSize(74, 74)
+    hud.spark:SetBlendMode("ADD")
+    hud.spark:SetVertexColor(1, 0.87, 0.59)
+    hud.spark:Hide()
+    hud.sparkPulse = hud:CreateAnimationGroup()
+    PulseAlpha(hud.sparkPulse, hud.spark, 0.12, 1, 0.15)
+    PulseAlpha(hud.sparkPulse, hud.spark, 1, 0, 1.05, 2)
+    hud.sparkPulse:SetScript("OnFinished", function() ClearCatchSpark(hud) end)
 
     local pulse = hud:CreateAnimationGroup()
     pulse:SetLooping("BOUNCE")
@@ -491,6 +572,8 @@ function W:CreateRecentCatches()
     hud:SetScript("OnShow", function() pulse:Play() end)
     hud:SetScript("OnHide", function()
         pulse:Stop()
+        hud.sparkPulse:Stop()
+        ClearCatchSpark(hud)
         for _, slot in ipairs(hud.slots) do HideCatchTooltip(slot) end
     end)
 end

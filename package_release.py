@@ -16,7 +16,7 @@ OUTPUT = ROOT / "dist" / "RicoSuite-forever.zip"
 REQUIRED_FILES = {
     "RicoFishing": (
         "LICENSE.txt", "LICENSE_GatherLite.txt", "LICENSE-RICO-SHARED.txt", "SOURCES_NL.txt",
-        "Media/PromptSmoke.tga", "Media/CatchStripSmoke.tga",
+        "Media/PromptSmoke.tga", "Media/CatchStripSmoke.tga", "Media/WantedCatchSpark.tga",
     ),
     "RicoLoot": (
         "COPYING.txt", "SOURCES_NL.txt", "Licenses/GPL-3.0.txt", "Licenses/RicoShared-MIT.txt",

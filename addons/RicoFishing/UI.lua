@@ -288,12 +288,18 @@ function U:Build()
         .. " direct Forever beta reports • partial loot coverage")
     local close = Button(frame, "Close", 72, 28, function() frame:Hide() end)
     close:SetPoint("TOPRIGHT", -24, -29)
+    local previous = close
+    if frame.ricoProfilesButton then
+        previous = frame.ricoProfilesButton
+        previous:ClearAllPoints()
+        previous:SetPoint("RIGHT", close, "LEFT", -8, 0)
+    end
     if F.SessionLog then
         local log = Button(frame, "Catch log", 99, 28, function() F.SessionLog:Toggle() end)
-        log:SetPoint("RIGHT", close, "LEFT", -8, 0)
+        log:SetPoint("RIGHT", previous, "LEFT", -8, 0)
     end
     if F.OneKey then
-        self.oneKeyCheck = Check(frame, "One-key fishing while holding a pole", "oneKey", 428, -33)
+        self.oneKeyCheck = Check(frame, "One-key fishing with pole", "oneKey", 396, -33)
         self.oneKeyStatus = Text(frame, 10, COLORS.mint)
         self.oneKeyStatus:SetPoint("TOPLEFT", 432, -58)
         self.oneKeyStatus:SetWidth(230)
@@ -350,6 +356,10 @@ function U:Build()
             row.star:SetPoint("TOPRIGHT", -8, -3)
             row.star:SetText("★")
             row.star:Hide()
+            row.wanted = Text(row, 10, COLORS.mint)
+            row.wanted:SetPoint("BOTTOMRIGHT", -8, 3)
+            row.wanted:SetText("◆")
+            row.wanted:Hide()
         end
         row.status = Text(row, 9, COLORS.muted)
         row.status:SetPoint("BOTTOMLEFT", 37, 3)
@@ -385,18 +395,25 @@ function U:Build()
     self.itemIcon:SetPoint("TOPLEFT", 350, -88)
     self.itemName = Text(frame, 18)
     self.itemName:SetPoint("TOPLEFT", 404, -87)
-    self.itemName:SetWidth(F.SessionLog and 332 or 440)
+    self.itemName:SetWidth(F.SessionLog and 330 or 440)
     self.itemName:SetWordWrap(false)
     if F.SessionLog then
-        self.favorite = Button(frame, "Favorite", 94, 24, function()
+        self.favorite = Button(frame, "Favorite", 110, 24, function()
             F.SessionLog:ToggleFavorite(F.db.selected)
             U:Refresh()
         end)
         self.favorite:SetPoint("TOPRIGHT", -28, -87)
+        self.wanted = Button(frame, "Mark wanted", 110, 24, function()
+            local id = F.db.selected
+            if F.SessionLog:GetWantedCatch() == id then id = nil end
+            F.SessionLog:SetWantedCatch(id)
+        end)
+        self.wanted:SetPoint("TOPRIGHT", -28, -114)
     end
     self.itemStatus = Text(frame, 11)
     self.itemStatus:SetPoint("TOPLEFT", 404, -114)
-    self.itemStatus:SetWidth(440)
+    self.itemStatus:SetWidth(F.SessionLog and 330 or 440)
+    self.itemStatus:SetWordWrap(false)
     self.itemNote = Text(frame, 11, COLORS.muted)
     self.itemNote:SetPoint("TOPLEFT", 351, -146)
     self.itemNote:SetWidth(490)
@@ -516,6 +533,7 @@ function U:Refresh()
         end
     end
     if not self.frame or not self.frame:IsShown() then return end
+    local wantedID = F.SessionLog and F.SessionLog:GetWantedCatch()
     local catalog = F:GetCatalog(self.query, self.kind)
     local pages = math.max(1, math.ceil(#catalog / 10))
     self.page = math.max(1, math.min(pages, self.page))
@@ -527,6 +545,7 @@ function U:Refresh()
             row.icon:SetTexture(F:GetIcon(item.id))
             row.name:SetText(item.name)
             if row.star then row.star:SetShown(F.SessionLog:IsFavorite(item.id)) end
+            if row.wanted then row.wanted:SetShown(item.id == wantedID) end
             row.status:SetText(item.observed and "Forever catch report" or "Reference; unconfirmed")
             row.status:SetTextColor(unpack(item.observed and COLORS.green or COLORS.amber))
             row.selected = item.id == F.db.selected
@@ -543,6 +562,11 @@ function U:Refresh()
         self.favorite.selected = F.SessionLog:IsFavorite(entry.id)
         self.favorite.label:SetText(self.favorite.selected and "Favorited" or "Favorite")
         T:PaintButton(self.favorite)
+    end
+    if self.wanted then
+        self.wanted.selected = wantedID == entry.id
+        self.wanted.label:SetText(self.wanted.selected and "Clear wanted" or "Mark wanted")
+        T:PaintButton(self.wanted)
     end
     self.itemStatus:SetText(entry.observed and "Direct Forever catch report • beta" or "Forever reference • not independently confirmed")
     self.itemStatus:SetTextColor(unpack(entry.observed and COLORS.green or COLORS.amber))

@@ -88,12 +88,26 @@ function L:Initialize()
         end
     end
     self.db = { history = history, current = Clean(old.current) or Empty(), favorites = favorites,
-        recentCatches = recentCatches, spots = type(old.spots) == "table" and old.spots or {} }
+        recentCatches = recentCatches, spots = type(old.spots) == "table" and old.spots or {},
+        wantedCatch = ItemID(old.wantedCatch) and old.wantedCatch or nil }
     RicoFishingLogDB, F.session = self.db, self.db.current
 end
 
 function L:GetRecentCatches()
     return self.db and self.db.recentCatches or emptyRecent
+end
+
+function L:GetWantedCatch()
+    return self.db and self.db.wantedCatch
+end
+
+function L:SetWantedCatch(id)
+    if not self.db or F.IsSecret(id) or (id ~= nil and not ItemID(id)) then return false end
+    if self.db.wantedCatch ~= id then
+        self.db.wantedCatch = id
+        F:Refresh()
+    end
+    return true
 end
 
 function L:IsFavorite(id)
