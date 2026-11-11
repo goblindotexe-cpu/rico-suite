@@ -139,6 +139,16 @@ function M:PaintTrim()
         for _, edge in ipairs(self.trim.base) do edge:SetColorTexture(0.025 + r * 0.33, 0.035 + g * 0.33, 0.03 + b * 0.33, 1) end
         self.trimTint = tint
     end
+    -- The glow's color and opacity are fixed between tint changes. The wave
+    -- geometry and the core and bubble colors still follow the animation clock.
+    if r ~= self.trimGlowRed or g ~= self.trimGlowGreen or b ~= self.trimGlowBlue then
+        for _, wave in ipairs(self.trim.waves) do
+            for _, segment in ipairs(wave) do
+                segment.glow:SetColorTexture(r, g, b, 0.22)
+            end
+        end
+        self.trimGlowRed, self.trimGlowGreen, self.trimGlowBlue = r, g, b
+    end
 
     -- A single phase around the perimeter keeps the wave continuous at each corner.
     for strand, wave in ipairs(self.trim.waves) do
@@ -159,7 +169,6 @@ function M:PaintTrim()
             else
                 local segment = wave[j]
                 local shine = 0.22 + 0.5 * math.sin(5 * arc + strand - clock * 0.5) ^ 4
-                segment.glow:SetColorTexture(r, g, b, 0.22)
                 segment.core:SetColorTexture(0.40 + r * 0.60, 0.28 + g * 0.72, 0.28 + b * 0.72, shine)
                 PlaceLine(segment.glow, self.hud, previousX, previousY, x, y)
                 PlaceLine(segment.core, self.hud, previousX, previousY, x, y)

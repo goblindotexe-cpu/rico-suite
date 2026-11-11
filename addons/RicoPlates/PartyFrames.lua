@@ -1,7 +1,8 @@
 -- Party styling reuses Blizzard's secure member buttons and pooled lifecycle.
 -- It never replaces party targeting/menu handlers or touches raid containers.
 local _, RP = ...
-local P = { entries = setmetatable({}, {__mode="k"}), compact = setmetatable({}, {__mode="k"}), errors=0 }
+local P = { entries = setmetatable({}, {__mode="k"}), compact = setmetatable({}, {__mode="k"}),
+    standardHooks = setmetatable({}, {__mode="k"}), failedStandardBuilds = setmetatable({}, {__mode="k"}), errors=0 }
 RP.PartyFrames = P
 local WHITE = "Interface\\Buttons\\WHITE8X8"
 local unpack = unpack or table.unpack
@@ -87,16 +88,28 @@ function P:Error(message)
     self.lastError=Public(message) and type(message)=="string" and message:sub(1,180) or "Party appearance could not be applied."
 end
 
+local function InstallStandardHook(object,method,callback)
+    local hooks=P.standardHooks[object]
+    if not hooks then hooks={}; P.standardHooks[object]=hooks end
+    if hooks[method] then return true end
+    local ok=Call(hooksecurefunc,object,method,callback)
+    if ok then hooks[method]=true end
+    return ok
+end
+
 local function SnapshotAlpha(state,object)
     if not Object(object) or state.alphaMap[object] then return end
     local before=Read(object,"GetAlpha")
     if not Number(before) then error("Native party artwork alpha is unavailable.",0) end
     local property={object=object,before=before}
     state.alphaMap[object]=property; state.alphas[#state.alphas+1]=property
-    if type(hooksecurefunc)~="function" then error("Native party artwork hook is unavailable.",0) end
-    local ok=pcall(hooksecurefunc,object,"SetAlpha",function(region,alpha)
-        if not state.active or P.writingAlpha then return end
-        if Number(alpha) then property.before=alpha end
+    local frame=state.native
+    local ok=InstallStandardHook(object,"SetAlpha",function(region,alpha)
+        local owner=P.entries[frame]
+        if not owner or not owner.active or P.writingAlpha then return end
+        local tracked=owner.alphaMap[region]
+        if not tracked then return end
+        if Number(alpha) then tracked.before=alpha end
         P.writingAlpha=true; pcall(region.SetAlpha,region,0); P.writingAlpha=false
     end)
     if not ok then error("Native party artwork could not be tracked.",0) end
@@ -110,15 +123,19 @@ local function HidePortrait(state)
 end
 
 local function TrackPortrait(state)
-    local function OnVisibility(shown)
-        if not state.active or state.writingPortrait or not Public(shown) then return end
-        state.portraitShown=shown and true or false
-        if shown then HidePortrait(state) end
+    local frame=state.native
+    local function OnVisibility(region,shown)
+        local owner=P.entries[frame]
+        if not owner or not owner.active or owner.portrait~=region or owner.writingPortrait or not Public(shown) then return end
+        owner.portraitShown=shown and true or false
+        if shown then HidePortrait(owner) end
     end
     local portrait=state.portrait
-    hooksecurefunc(portrait,"Show",function() OnVisibility(true) end)
-    hooksecurefunc(portrait,"Hide",function() OnVisibility(false) end)
-    hooksecurefunc(portrait,"SetShown",function(_,shown) OnVisibility(shown) end)
+    if not InstallStandardHook(portrait,"Show",function(region) OnVisibility(region,true) end)
+        or not InstallStandardHook(portrait,"Hide",function(region) OnVisibility(region,false) end)
+        or not InstallStandardHook(portrait,"SetShown",OnVisibility) then
+        error("Native party portrait visibility could not be tracked.",0)
+    end
 end
 
 local function SnapshotMouse(state,object)
@@ -226,6 +243,7 @@ end
 function P:BuildStandard(frame)
     local existing=self.entries[frame]
     if existing then return existing end
+    if self.failedStandardBuilds[frame] then return nil end
     local health=Field(frame,"HealthBarContainer")
     local portrait=Field(frame,"Portrait")
     if not Object(health) or not Object(portrait) or not Object(Field(frame,"Name")) then
@@ -235,6 +253,8 @@ function P:BuildStandard(frame)
     if not unit then return nil end
     local state={native=frame,portrait=portrait,alphas={},alphaMap={},mouse={},mouseMap={},points={},pointMap={},fonts={},fontMap={},levels={},levelMap={}}
     local ok,reason=pcall(function()
+        state.width,state.height=Read(frame,"GetWidth"),Read(frame,"GetHeight")
+        if not Number(state.width) or not Number(state.height) then error("Native party frame dimensions are unavailable.",0) end
         -- Blizzard repaints the portrait's vertex alpha during health updates.
         -- Its visibility can be owned independently while it keeps updating.
         TrackPortrait(state)
@@ -244,12 +264,10 @@ function P:BuildStandard(frame)
         local nativeOverlay=Field(frame,"PartyMemberOverlay")
         SnapshotAlpha(state,Field(nativeOverlay,"Status")); SnapshotAlpha(state,Field(nativeOverlay,"Disconnect"))
         SnapshotMouse(state,health); SnapshotMouse(state,Field(health,"HealthBar")); SnapshotMouse(state,Field(frame,"ManaBar"))
-        state.width,state.height=Read(frame,"GetWidth"),Read(frame,"GetHeight")
-        if not Number(state.width) or not Number(state.height) then error("Native party frame dimensions are unavailable.",0) end
         local visual=CreateFrame("Frame",nil,frame)
+        state.visual=visual
         visual:SetPoint("TOPLEFT",frame,"TOPLEFT",0,0); visual:EnableMouse(false)
         visual:SetFrameLevel(frame:GetFrameLevel()+6)
-        state.visual=visual
         state.entry=RP.UnitFrames:CreateVisual(visual,"party"..(Field(frame,"layoutIndex") or 1),false)
         state.entry.nativeAuras=true
         state.entry.unit=unit
@@ -258,7 +276,15 @@ function P:BuildStandard(frame)
         state.entry.nativeButton=frame
         visual:Hide()
     end)
-    if not ok then if state.visual then state.visual:Hide() end; return nil,reason end
+    if not ok then
+        if state.visual then
+            -- Keep the native frame usable and leave the incomplete visual hidden.
+            -- Retrying its constructor would allocate another set of child frames.
+            self.failedStandardBuilds[frame]=true
+            pcall(state.visual.Hide,state.visual)
+        end
+        return nil,reason
+    end
     self.entries[frame]=state
     frame:HookScript("OnShow",function() P:QueueApply() end)
     frame:HookScript("OnHide",function() P:ClearStandard(state) end)
@@ -472,10 +498,15 @@ function P:PaintCompact(state)
 end
 
 function P:HideCompact(state)
+    state.appliedUnit=nil
     state.liquid:Stop(); state.clip:Hide(); state.front:Hide()
     ClearRange(state)
     if state.healPreview then RP.Plates:UpdateHealPreview(state.healPreview) end
     if RP.HealerHots then RP.HealerHots:Hide(state) end
+end
+
+local function UpdateCompactHeal(state,unit)
+    if state.healPreview then RP.Plates:UpdateHealPreview(state.healPreview,Field(state.native,"displayedUnit") or unit) end
 end
 
 function P:UpdateCompactHealthText(state)
@@ -533,11 +564,14 @@ function P:ApplyCompact(state)
     local width,height=Read(state.health,"GetWidth"),Read(state.health,"GetHeight")
     if Number(width) and Number(height) then state.liquid.width,state.liquid.height=width,height end
     if state.native:IsVisible() then
+        state.appliedUnit=unit
         state.clip:Show(); state.front:Show()
         if newlyStyled then self:UpdateCompactHealthText(state) end
-        if RP.db.bubbles then state.liquid:Start() else state.liquid:Stop() end
+        if RP.db.bubbles then
+            if not state.liquid:GetScript("OnUpdate") then state.liquid:Start() end
+        else state.liquid:Stop() end
         UpdateRange(state,state.health,unit)
-        if state.healPreview then RP.Plates:UpdateHealPreview(state.healPreview,Field(state.native,"displayedUnit") or unit) end
+        UpdateCompactHeal(state,unit)
         if RP.HealerHots then RP.HealerHots:Attach(state,unit,state.front,state.health,"compact") end
     else self:HideCompact(state) end
 end
@@ -689,6 +723,29 @@ function P:SetPreviewShown(preview,shown)
     if shown then self:RefreshOptionsPreview(preview) end
 end
 
+local function MatchingUnit(state,unit)
+    if not state.active then return end
+    local token=CurrentUnit(state.native)
+    if not token or token==unit then return token end
+    local ok,same=Call(UnitIsUnit,token,unit)
+    if ok and RP.PublicTrue(same) then return token end
+end
+
+local function UpdateVitals(state,unit,kind)
+    if kind=="standard" then
+        RP.Plates:UpdateHealth(state.entry.plate)
+        RP.UnitFrames:UpdateStatus(state.entry)
+        if RP.Dispels then RP.Dispels:RefreshStandard(state) end
+    else
+        UpdateCompactHeal(state,unit)
+        if RP.Dispels then RP.Dispels:RefreshCompact(state) end
+    end
+    if RP.PartyWarnings then RP.PartyWarnings:Refresh(state,kind) end
+end
+
+local healthEvents={UNIT_HEALTH=true,UNIT_MAXHEALTH=true}
+local powerEvents={UNIT_POWER_UPDATE=true,UNIT_POWER_FREQUENT=true,UNIT_MAXPOWER=true,UNIT_DISPLAYPOWER=true}
+
 function P:Initialize()
     if self.initialized then return end
     self.initialized=true
@@ -722,28 +779,39 @@ function P:Initialize()
                 -- This preview contains only the separate own-overheal marker.
                 for _,state in pairs(P.compact) do
                     if state.active and state.healPreview and Read(state.native,"IsVisible")==true then
-                        local displayed=Field(state.native,"displayedUnit") or CurrentUnit(state.native)
-                        RP.Plates:UpdateHealPreview(state.healPreview,displayed)
+                        UpdateCompactHeal(state,CurrentUnit(state.native))
                     end
                 end
                 return
             end
             local portrait=event=="UNIT_PORTRAIT_UPDATE" or event=="UNIT_MODEL_CHANGED" or event=="UNIT_NAME_UPDATE"
-            local function Matches(frame)
-                local token=CurrentUnit(frame)
-                if not token then return false end
-                if token==unit then return true end
-                local ok,same=Call(UnitIsUnit,token,unit)
-                return ok and RP.PublicTrue(same)
-            end
+            local health,power=healthEvents[event],powerEvents[event]
+            local cast=event:find("UNIT_SPELLCAST_",1,true)~=nil
+            local frequent=health or power or cast
+            local enabled=Enabled()
+            local pendingDisable=not enabled and Combat()
+            local raid=IsRaid()
             for _,state in pairs(P.entries) do
-                if state.active and Matches(state.native) then P:RefreshStandard(state,portrait) end
+                local token=MatchingUnit(state,unit)
+                if token then
+                    local entry=state.entry
+                    if frequent and (enabled or pendingDisable) and not raid and entry.enabled and entry.unit==token
+                        and Exists(token) and Read(state.native,"IsVisible")==true and Read(entry.plate,"IsVisible")==true then
+                        if pendingDisable then P.pending=true end
+                        if health then UpdateVitals(state,token,"standard")
+                        elseif power then RP.Plates:UpdatePower(entry.plate)
+                        else RP.Plates:UpdateCast(entry.plate) end
+                    else P:RefreshStandard(state,portrait) end
+                end
             end
             for _,state in pairs(P.compact) do
-                if state.active and Matches(state.native) then
-                    local pendingDisable=Combat() and not Enabled()
+                local token=MatchingUnit(state,unit)
+                if token then
                     if pendingDisable then P.pending=true end
-                    if (not Enabled() and not pendingDisable) or IsRaid() then P:ReleaseCompact(state)
+                    if (not enabled and not pendingDisable) or raid then P:ReleaseCompact(state)
+                    elseif frequent and state.appliedUnit==token and Read(state.front,"IsVisible")==true then
+                        -- Native compact frames already update their HP, power and cast widgets.
+                        if health then UpdateVitals(state,token,"compact") end
                     else P:ApplyCompact(state) end
                 end
             end

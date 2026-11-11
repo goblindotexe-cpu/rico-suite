@@ -1,9 +1,9 @@
 local addonName, F = ...
 _G.RicoFishing = F
-F.name, F.version = addonName, "1.4.0"
+F.name, F.version = addonName, "1.6.0"
 F.session = { items = {}, quantity = 0, loots = 0 }
 F.defaults = { selected = 6291, goal = 20, pins = true, reportedPins = false, hud = true, oneKey = true,
-    hudX = 0, hudY = 165 }
+    lureTimer = true, bagWarning = true, favoriteAlerts = true, fishingPrompt = true, hudX = 0, hudY = 165 }
 
 function F.IsSecret(value) return issecretvalue and issecretvalue(value) or false end
 function F.Number(value)
@@ -53,7 +53,12 @@ end
 
 function F:Refresh()
     if self.OneKey and self.OneKey.events and self.OneKey.setting ~= self.db.oneKey then self.OneKey:Update() end
+    if self.warningsReady and (self.lureTimerSetting ~= self.db.lureTimer or self.bagWarningSetting ~= self.db.bagWarning) then
+        self.lureTimerSetting, self.bagWarningSetting = self.db.lureTimer, self.db.bagWarning
+        self.Warnings:RefreshOptions()
+    end
     if self.UI then self.UI:Refresh() end
+    if self.spotsReady then self.SpotStats:Refresh() end
 end
 
 function F:QueueRefresh()
@@ -127,14 +132,14 @@ function F:ReceiveLootSlot(slot)
     window.credited = true
     if self.SessionLog then
         self.SessionLog:Record(data.id, data.quantity, firstInWindow)
-        self:QueueRefresh()
-        return
+    else
+        local session = self.session
+        if not session.started then session.started = GetTime and GetTime() or 0 end
+        session.items[data.id] = (session.items[data.id] or 0) + data.quantity
+        session.quantity = session.quantity + data.quantity
+        if firstInWindow then session.loots = session.loots + 1 end
     end
-    local session = self.session
-    if not session.started then session.started = GetTime and GetTime() or 0 end
-    session.items[data.id] = (session.items[data.id] or 0) + data.quantity
-    session.quantity = session.quantity + data.quantity
-    if firstInWindow then session.loots = session.loots + 1 end
+    if self.spotsReady then self.SpotStats:Record(data.id, data.quantity, firstInWindow) end
     self:QueueRefresh()
 end
 
@@ -169,6 +174,8 @@ function F:Command(text)
     if command == "status" then self:Status()
     elseif command == "reset" then self:ResetSession(); self:Print("New fishing session started.")
     elseif command == "log" and self.SessionLog then self.SessionLog:Toggle()
+    elseif command == "spots" and self.spotsReady then self.SpotStats:Toggle()
+    elseif command == "tools" and self.UI then self.UI:ToggleTools()
     elseif command == "key" and self.OneKey then
         self:SetOption("oneKey", not self.db.oneKey)
         self:Print(self.OneKey:GetStatus())
@@ -193,9 +200,15 @@ function F:Initialize()
     if not self.Number(self.db.hudX) then self.db.hudX = 0 end
     if not self.Number(self.db.hudY) then self.db.hudY = 165 end
     if self.SessionLog then self.SessionLog:Initialize() end
+    if self.SpotStats then self.SpotStats:Initialize(); self.spotsReady = true end
     if self.OneKey then self.OneKey:Initialize() end
     if self.Map then self.Map:Initialize() end
     if self.UI then self.UI:Initialize() end
+    if self.Warnings then
+        self.Warnings:Initialize()
+        self.lureTimerSetting, self.bagWarningSetting = self.db.lureTimer, self.db.bagWarning
+        self.warningsReady = true
+    end
     self:Select(self.db.selected)
     self:Print("v" .. self.version .. " loaded. /rf opens the fishing guide.")
 end

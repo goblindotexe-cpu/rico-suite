@@ -81,6 +81,7 @@ function U:GetSelected()
     if not self.selectedID then return end
     if self.selectedNode and self.selectedNode.id==self.selectedID then return self.selectedNode end
     for _,node in ipairs(M:GetNodes()) do if node.id==self.selectedID then self.selectedNode=node; return node end end
+    self.selectedID,self.selectedNode=nil,nil
 end
 function U:Act(method,...)
     if not M.Routes or type(M.Routes[method])~="function" then self.notice="Mining navigation is unavailable. Use /reload to load the update."

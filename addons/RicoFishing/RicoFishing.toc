@@ -1,8 +1,8 @@
 ## Interface: 16001
 ## Title: RicoFishing
-## Notes: Forever fishing guide with map markers, one-key fishing, and a catch log.
+## Notes: One-key fishing, lure and bag alerts, catch history, and personal spot comparisons for WoW Forever.
 ## Author: Rico
-## Version: 1.4.0
+## Version: 1.6.0
 ## SavedVariables: RicoFishingDB, RicoSuiteDB
 ## SavedVariablesPerCharacter: RicoFishingLogDB
 ## OptionalDeps: Questie
@@ -11,6 +11,8 @@ Core.lua
 RicoUI.lua
 OneKey.lua
 SessionLog.lua
+SpotStats.lua
+FishingWarnings.lua
 RicoSuite.lua
 RicoLauncher.lua
 Map.lua

@@ -1,7 +1,7 @@
 -- Historical mining observations, drawn with native map coordinates. No Questie.
 local _, RP = ...
 local M = RP.Mining or _G.RicoMining
-local P = { worldPins={}, miniPins={}, points={}, worldCount=0, miniCount=0, spatial={}, dataVersion=0 }
+local P = { worldPins={}, miniPins={}, points={}, worldCount=0, miniCount=0, spatial={}, dataVersion=0, catalogDirty=true }
 M.Map = P
 local WHITE = "Interface\\Buttons\\WHITE8X8"
 local CELL, HIT_CELLS, BATCH = 256, 32, 256
@@ -141,10 +141,13 @@ function P:Project(node,map)
 end
 function P:ClearWorld()
     self.worldRevision=(self.worldRevision or 0)+1
+    for index=1,self.worldCount do
+        local point=self.worldPins[index]
+        point.icon:Hide(); point.node=nil
+    end
     self.worldRendering=false; self.worldCount=0; self.worldGrid={}
     self.worldResizeIndex,self.worldResizeAgain=nil,nil
     if self.worldLayer then self.worldLayer:SetScript("OnUpdate",nil) end
-    for _,point in ipairs(self.worldPins) do point.icon:Hide(); point.node=nil end
     if self.worldHover then
         if GameTooltip and GameTooltip.IsOwned and GameTooltip:IsOwned(self.worldHover) then GameTooltip:Hide() end
         self.worldHover.node=nil; self.worldHover:Hide()
@@ -308,14 +311,18 @@ function P:NearbyPoints(instance,px,py,radius)
     end
     return result
 end
-function P:RefreshMini()
+function P:ClearMini()
+    if self.miniView or self.miniCount>0 then self:HidePins(self.miniPins) end
+    self.miniView=nil
     self.miniCount=0
-    if not M.db or M.db.pins==false or not Minimap or not Minimap:IsVisible() then self:HidePins(self.miniPins); return end
+end
+function P:RefreshMini(ifChanged)
+    if not M.db or M.db.pins==false or not Minimap or not Minimap:IsVisible() then self:ClearMini(); return end
     local ok,radius=Call(C_Minimap and C_Minimap.GetViewRadius)
     local got,px,py,_,instance=Call(UnitPosition,"player")
-    if not ok or not Number(radius) or radius<=0 or not got or not Number(px) or not Number(py) or not Number(instance) then self:HidePins(self.miniPins); return end
+    if not ok or not Number(radius) or radius<=0 or not got or not Number(px) or not Number(py) or not Number(instance) then self:ClearMini(); return end
     local width,height=Minimap:GetWidth(),Minimap:GetHeight()
-    if not Number(width) or not Number(height) or width<=0 or height<=0 then self:HidePins(self.miniPins); return end
+    if not Number(width) or not Number(height) or width<=0 or height<=0 then self:ClearMini(); return end
     local rotating,rotation=Call(GetCVarBool,"rotateMinimap")
     local ignored,ignoreRotation=Call(C_Minimap and C_Minimap.IsRotateMinimapIgnored)
     local facing=0
@@ -325,6 +332,14 @@ function P:RefreshMini()
     end
     local shapeOK,shape=Call(GetMinimapShape)
     local square=shapeOK and Public(shape) and shape=="SQUARE"
+    local level=Minimap:GetFrameLevel()+6
+    local view=self.miniView
+    if ifChanged and view and view.version==self.dataVersion and view.map==Minimap and view.instance==instance
+        and view.x==px and view.y==py and view.radius==radius and view.facing==facing
+        and view.width==width and view.height==height and view.square==square and view.level==level then return end
+
+    self.miniView=nil
+    self.miniCount=0
     local visible={}
     local cos,sin=math.cos(facing),math.sin(facing)
     -- A rotated square's corners extend beyond the unrotated radius AABB.
@@ -357,10 +372,13 @@ function P:RefreshMini()
             pin=pin or self:GetPin(#self.miniPins+1,true,Minimap)
         end
         local previous=pin.node
-        local changed=not previous or previous.id~=value.point.node.id or previous.lastSeen~=value.point.node.lastSeen or previous.count~=value.point.node.count
-        pin.node=value.point.node; pin.icon:SetTexture(Icon(pin.node)); pin:ClearAllPoints()
+        local node=value.point.node
+        local changed=not previous or previous.id~=node.id or previous.lastSeen~=node.lastSeen or previous.count~=node.count
+            or previous.requiredSkill~=node.requiredSkill or previous.requirementSource~=node.requirementSource
+        if pin:GetParent()~=Minimap then pin:SetParent(Minimap) end
+        pin.node=node; pin.icon:SetTexture(Icon(pin.node)); pin:ClearAllPoints()
         pin:SetPoint("CENTER",Minimap,"CENTER",value.x*width/2,value.y*height/2)
-        pin:SetFrameLevel(Minimap:GetFrameLevel()+6)
+        pin:SetFrameLevel(level)
         if not pin:IsShown() then pin:Show() end
         if changed and GameTooltip and GameTooltip.IsOwned and GameTooltip:IsOwned(pin) then self:ShowTooltip(pin) end
         used[pin]=true; self.miniCount=index
@@ -372,6 +390,8 @@ function P:RefreshMini()
             pin.node=nil
         end
     end
+    self.miniView={version=self.dataVersion,map=Minimap,instance=instance,x=px,y=py,radius=radius,facing=facing,
+        width=width,height=height,square=square,level=level}
 end
 function P:HookWorldMap()
     if self.mapHooked or not WorldMapFrame then return end
@@ -404,11 +424,9 @@ local function Projection(map)
         return {instance=a,x=ax,y=ay,xx=bx-ax,xy=by-ay,yx=cx-ax,yy=cy-ay}
     end
 end
-function P:Refresh()
-    self:HookWorldMap(); self.points={}; self.spatial={}; self.dataVersion=self.dataVersion+1
-    self.projected=nil
+function P:RebuildCatalog()
+    local points,spatial,matrices={},{},{}
     local nodes=M:GetNodes()
-    local matrices={}
     for _,node in ipairs(nodes) do
         if Valid(node) then
             local point={node=node}
@@ -420,22 +438,42 @@ function P:Refresh()
                 point.wy=matrix.y+node.x*matrix.xy+node.y*matrix.yy
             else point.instance,point.wx,point.wy=WorldPosition(node.map,node.x,node.y) end
             if Number(point.instance) and Number(point.wx) and Number(point.wy) then
-                local grid=self.spatial[point.instance]
-                if not grid then grid={}; self.spatial[point.instance]=grid end
+                local grid=spatial[point.instance]
+                if not grid then grid={}; spatial[point.instance]=grid end
                 local key=math.floor(point.wx/CELL)..":"..math.floor(point.wy/CELL)
                 grid[key]=grid[key] or {}; grid[key][#grid[key]+1]=point
             end
-            self.points[#self.points+1]=point
+            points[#points+1]=point
         end
     end
-    self:RefreshWorld(); self:RefreshMini()
+    self.points,self.spatial=points,spatial
+    self.dataVersion=self.dataVersion+1
+    self.catalogDirty=false
+    self.projected=nil
+end
+function P:Refresh(viewOnly)
+    self:HookWorldMap()
+    if viewOnly~=true then self.catalogDirty=true end
+    if not M.db or M.db.pins==false then
+        if self.markersEnabled then
+            self:ClearWorld(); self:ClearMini()
+            if self.worker then self.worker:SetScript("OnUpdate",nil) end
+        end
+        self.markersEnabled=false
+        return
+    end
+    local rebuild=self.catalogDirty
+    if rebuild then self:RebuildCatalog() end
+    if rebuild or not self.markersEnabled then self:RefreshWorld() end
+    self.markersEnabled=true
+    self:RefreshMini(true)
     if self.worker then
-        self.worker:SetScript("OnUpdate",nil)
-        if M.db and M.db.pins~=false and #self.points>0 then
+        if #self.points==0 then self.worker:SetScript("OnUpdate",nil)
+        elseif not self.worker:GetScript("OnUpdate") then
             self.elapsed=0
             self.worker:SetScript("OnUpdate",function(_,elapsed)
                 P.elapsed=P.elapsed+elapsed
-                if P.elapsed>=0.15 then P.elapsed=0; P:RefreshMini(); P:UpdateWorldHover() end
+                if P.elapsed>=0.15 then P.elapsed=0; P:RefreshMini(true); P:UpdateWorldHover() end
             end)
         end
     end
@@ -463,7 +501,10 @@ function P:Initialize()
     self.events:SetScript("OnEvent",function(_,event)
         if event=="ADDON_LOADED" then P:HookWorldMap()
         elseif event=="MINIMAP_UPDATE_ZOOM" then P:RefreshMini()
-        else P:Refresh() end
+        elseif event=="PLAYER_ENTERING_WORLD" and #P.points>0 and not next(P.spatial) then
+            -- Conversion may have been unavailable while the client was loading.
+            P:Refresh()
+        else P:Refresh(true) end
     end)
     self:Refresh()
 end

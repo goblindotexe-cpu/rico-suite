@@ -101,6 +101,52 @@ function U:CopySource(entry)
     self.sourceBox.edit:HighlightText()
 end
 
+function U:RefreshTools()
+    if not self.tools or not self.tools:IsShown() then return end
+    for _, check in ipairs(self.toolChecks) do check:SetChecked(F.db[check.key]) end
+end
+
+function U:RefreshFishingPrompt()
+    if F.Warnings then F.Warnings:RefreshPrompt() end
+end
+
+function U:CreateFishingPrompt()
+    if F.Warnings then F.Warnings:CreatePrompt() end
+end
+
+function U:ToggleTools()
+    if not self.tools then
+        local panel = CreateFrame("Frame", "RicoFishingTools", UIParent)
+        self.tools = panel
+        panel:SetSize(382, 251)
+        panel:SetPoint("CENTER")
+        panel:SetFrameStrata("DIALOG")
+        panel:SetToplevel(true)
+        panel:EnableMouse(true)
+        panel:SetClampedToScreen(true)
+        panel.ricoSkipSuiteButtons = true
+        T:Window(panel)
+        local title = Text(panel, 21)
+        title:SetPoint("TOPLEFT", 22, -24)
+        T:Title(title, "FISHING TOOLS")
+        local close = Button(panel, "Close", 63, 24, function() panel:Hide() end)
+        close:SetPoint("TOPRIGHT", -20, -29)
+        self.toolChecks = {
+            Check(panel, "Show the lure countdown", "lureTimer", 22, -88),
+            Check(panel, "Warn when general bags are nearly full", "bagWarning", 22, -117),
+            Check(panel, "Tell me when I loot a favorite catch", "favoriteAlerts", 22, -146),
+            Check(panel, "Show F prompt beside your character", "fishingPrompt", 22, -175),
+        }
+        local hint = Text(panel, 10, COLORS.muted)
+        hint:SetPoint("BOTTOMLEFT", 26, 18)
+        hint:SetText("Lure and bag status appear while your fishing pole is equipped.")
+        panel:Hide()
+        if type(UISpecialFrames) == "table" then UISpecialFrames[#UISpecialFrames + 1] = "RicoFishingTools" end
+    end
+    self.tools:SetShown(not self.tools:IsShown())
+    self:RefreshTools()
+end
+
 function U:Build()
     if self.frame then return end
     self.building = true
@@ -181,6 +227,13 @@ function U:Build()
         row.name:SetPoint("TOPLEFT", 37, -4)
         row.name:SetWidth(242)
         row.name:SetWordWrap(false)
+        if F.SessionLog then
+            row.name:SetWidth(222)
+            row.star = Text(row, 12, COLORS.amber)
+            row.star:SetPoint("TOPRIGHT", -8, -3)
+            row.star:SetText("★")
+            row.star:Hide()
+        end
         row.status = Text(row, 9, COLORS.muted)
         row.status:SetPoint("BOTTOMLEFT", 37, 3)
         row:SetScript("OnEnter", function(self)
@@ -205,14 +258,25 @@ function U:Build()
     self.pageText = Text(frame, 11, COLORS.muted)
     self.pageText:SetPoint("TOP", frame, "TOPLEFT", 165, -520)
     self.hudCheck = Check(frame, "Show goal tracker", "hud", 22, -567)
+    if F.Warnings then
+        local tools = Button(frame, "Fishing tools", 102, 25, function() U:ToggleTools() end)
+        tools:SetPoint("TOPLEFT", 207, -567)
+    end
 
     self.itemIcon = frame:CreateTexture(nil, "ARTWORK")
     self.itemIcon:SetSize(42, 42)
     self.itemIcon:SetPoint("TOPLEFT", 350, -88)
     self.itemName = Text(frame, 18)
     self.itemName:SetPoint("TOPLEFT", 404, -87)
-    self.itemName:SetWidth(440)
+    self.itemName:SetWidth(F.SessionLog and 332 or 440)
     self.itemName:SetWordWrap(false)
+    if F.SessionLog then
+        self.favorite = Button(frame, "Favorite", 94, 24, function()
+            F.SessionLog:ToggleFavorite(F.db.selected)
+            U:Refresh()
+        end)
+        self.favorite:SetPoint("TOPRIGHT", -28, -87)
+    end
     self.itemStatus = Text(frame, 11)
     self.itemStatus:SetPoint("TOPLEFT", 404, -114)
     self.itemStatus:SetWidth(440)
@@ -249,6 +313,10 @@ function U:Build()
     backLoc:SetPoint("TOPRIGHT", -63, -325)
     local nextLoc = Button(frame, ">", 25, 23, function() U.locationPage = U.locationPage + 1; U:Refresh() end)
     nextLoc:SetPoint("TOPRIGHT", -28, -325)
+    if F.SpotStats then
+        local compare = Button(frame, "Compare spots", 114, 23, function() F.SpotStats:Toggle() end)
+        compare:SetPoint("RIGHT", backLoc, "LEFT", -9, 0)
+    end
     for index = 1, 3 do
         local row = CreateFrame("Frame", nil, frame)
         row:SetSize(490, 46)
@@ -311,6 +379,8 @@ end
 
 function U:Refresh()
     if not F.db or self.building then return end
+    self:RefreshTools()
+    self:RefreshFishingPrompt()
     local entry = F:GetEntry(F.db.selected)
     if not entry then return end
     if self.hud then
@@ -334,6 +404,7 @@ function U:Refresh()
         if item then
             row.icon:SetTexture(F:GetIcon(item.id))
             row.name:SetText(item.name)
+            if row.star then row.star:SetShown(F.SessionLog:IsFavorite(item.id)) end
             row.status:SetText(item.observed and "Forever catch report" or "Reference; unconfirmed")
             row.status:SetTextColor(unpack(item.observed and COLORS.green or COLORS.amber))
             row.selected = item.id == F.db.selected
@@ -346,6 +417,11 @@ function U:Refresh()
     self.pageText:SetText(string.format("%d / %d • %d items", self.page, pages, #catalog))
     self.itemIcon:SetTexture(F:GetIcon(entry.id))
     self.itemName:SetText(entry.name)
+    if self.favorite then
+        self.favorite.selected = F.SessionLog:IsFavorite(entry.id)
+        self.favorite.label:SetText(self.favorite.selected and "Favorited" or "Favorite")
+        T:PaintButton(self.favorite)
+    end
     self.itemStatus:SetText(entry.observed and "Direct Forever catch report • beta" or "Forever reference • not independently confirmed")
     self.itemStatus:SetTextColor(unpack(entry.observed and COLORS.green or COLORS.amber))
     self.itemNote:SetText(entry.observed and "This catch was reported in the Forever beta and has not been reconfirmed in the release version. Each location has its own source status."
@@ -398,5 +474,6 @@ function U:Initialize()
     hud.detail = Text(hud, 10, COLORS.muted)
     hud.detail:SetPoint("TOPLEFT", 10, -58)
     hud.detail:SetWidth(272)
+    if F.OneKey then self:CreateFishingPrompt() end
     self:Refresh()
 end

@@ -1,6 +1,6 @@
 local addonName, RP = ...
 _G.RicoPlates = RP
-RP.name, RP.version = addonName, "1.22.5"
+RP.name, RP.version = addonName, "1.23.0"
 RP.media = "Interface\\AddOns\\" .. addonName .. "\\Media\\"
 RP.defaults = {
     enabled = true, showFriendlyNPCs = false,
@@ -348,6 +348,7 @@ function RP:Status()
     end
     self:Print("Active nameplates: " .. count .. " | skipped protected plates: " .. forbidden)
     if self.Plates then
+        self:Print("Animated world nameplates: " .. (self.Plates.animatedCount or 0) .. " / " .. self.db.maxAnimatedPlates)
         self:Print("NPC resource filter: " .. (self.Plates.powerAlphaClamp
             and "public zero check + native maximum filter" or "public capacity check (native maximum filter unavailable)"))
     end

@@ -1,9 +1,30 @@
 local _, F = ...
-local L = { view = 0, page = 1 }
+local L = { view = 0, page = 1, requested = {} }
 F.SessionLog = L
 
 local HISTORY_LIMIT, IDLE_SECONDS, ROWS = 25, 15 * 60, 7
 local unpack = unpack or table.unpack
+local ItemName
+
+local function ItemID(id)
+    return F.Number(id) and id > 0 and id == math.floor(id)
+end
+
+local function IsQuality(quality)
+    return F.Number(quality) and quality >= 0 and quality <= 8 and quality == math.floor(quality)
+end
+
+local function ReadQuality(id)
+    local ok, _, _, quality = F.Call(C_Item and C_Item.GetItemInfo or GetItemInfo, id)
+    if ok and IsQuality(quality) then return quality end
+end
+
+local function RequestItem(id)
+    if C_Item and C_Item.RequestLoadItemDataByID and not L.requested[id] then
+        L.requested[id] = true
+        F.Call(C_Item.RequestLoadItemDataByID, id)
+    end
+end
 
 local function Timestamp()
     local ok, now = F.Call(GetServerTime)
@@ -14,20 +35,25 @@ local function Timestamp()
 end
 
 local function Empty()
-    return { items = {}, quantity = 0, loots = 0 }
+    return { items = {}, qualities = {}, quantity = 0, loots = 0 }
 end
 
 local function Clean(raw)
     if type(raw) ~= "table" or type(raw.items) ~= "table" then return end
     local session = Empty()
     for id, count in pairs(raw.items) do
-        if F.Number(id) and id > 0 and id == math.floor(id) and F.Number(count) and count >= 1 then
+        if ItemID(id) and F.Number(count) and count >= 1 then
             local quantity = math.floor(count)
             session.items[id] = quantity
             session.quantity = session.quantity + quantity
         end
     end
     if session.quantity == 0 then return end
+    if type(raw.qualities) == "table" then
+        for id, quality in pairs(raw.qualities) do
+            if session.items[id] and IsQuality(quality) then session.qualities[id] = quality end
+        end
+    end
     session.loots = F.Number(raw.loots) and math.min(session.quantity, math.max(1, math.floor(raw.loots))) or 1
     session.started = F.Number(raw.started) and math.max(0, math.floor(raw.started)) or 0
     session.last = F.Number(raw.last) and math.max(session.started, math.floor(raw.last)) or session.started
@@ -38,14 +64,34 @@ end
 function L:Initialize()
     local old = type(RicoFishingLogDB) == "table" and RicoFishingLogDB or {}
     local history = {}
+    local favorites = {}
     if type(old.history) == "table" then
         for index = 1, HISTORY_LIMIT do
             local session = Clean(old.history[index])
             if session then history[#history + 1] = session end
         end
     end
-    self.db = { history = history, current = Clean(old.current) or Empty() }
+    if type(old.favorites) == "table" then
+        for id, selected in pairs(old.favorites) do
+            if ItemID(id) and selected == true then favorites[id] = true end
+        end
+    end
+    self.db = { history = history, current = Clean(old.current) or Empty(), favorites = favorites,
+        spots = type(old.spots) == "table" and old.spots or {} }
     RicoFishingLogDB, F.session = self.db, self.db.current
+end
+
+function L:IsFavorite(id)
+    return self.db ~= nil and ItemID(id) and self.db.favorites[id] == true
+end
+
+function L:ToggleFavorite(id)
+    if not self.db or not ItemID(id) then return false end
+    local selected = not self:IsFavorite(id)
+    self.db.favorites[id] = selected and true or nil
+    self:Refresh()
+    if F.QueueRefresh then F:QueueRefresh() else F:Refresh() end
+    return selected
 end
 
 function L:Archive()
@@ -82,16 +128,27 @@ function L:Record(id, quantity, firstInWindow)
     end
     current.last = math.max(now, current.last or current.started)
     current.items[id] = (current.items[id] or 0) + quantity
+    if current.qualities[id] == nil then current.qualities[id] = ReadQuality(id) end
     current.quantity = current.quantity + quantity
-    if firstInWindow then current.loots = current.loots + 1 end
+    if firstInWindow then
+        current.loots = current.loots + 1
+        self.favoriteAlerted = nil
+    end
+    if self:IsFavorite(id) and not self.favoriteAlerted and F.db.favoriteAlerts ~= false then
+        self.favoriteAlerted = true
+        F:Print("Favorite caught · " .. ItemName(id) .. " ×" .. quantity)
+    end
     if self.view == 0 or archived then self:Refresh() end
 end
 
-function L:GetRate()
-    local current = self.db.current
-    if not current.started or current.started <= 0 then return end
-    local elapsed = Timestamp() - current.started
-    if elapsed >= 60 then return current.quantity * 3600 / elapsed end
+local function Duration(session)
+    if session.started and session.started > 0 then return session.last - session.started end
+end
+
+function L:GetRate(session)
+    session = session or self.db.current
+    local elapsed = Duration(session)
+    if elapsed and elapsed >= 60 then return session.quantity * 3600 / elapsed end
 end
 
 local function Text(parent, size, color)
@@ -123,24 +180,46 @@ local function DateLabel(timestamp)
     return ok and F.PublicString(result) and result or "Date unavailable"
 end
 
-local function ItemName(id)
+ItemName = function(id)
     local entry = F:GetEntry(id)
     if entry and F.PublicString(entry.name) then return entry.name end
     local ok, name = F.Call(C_Item and C_Item.GetItemNameByID or GetItemInfo, id)
     if ok and F.PublicString(name) then return name end
-    if C_Item and C_Item.RequestLoadItemDataByID and not L.requested[id] then
-        L.requested[id] = true
-        F.Call(C_Item.RequestLoadItemDataByID, id)
-    end
+    RequestItem(id)
     return "Item #" .. id
+end
+
+local function DurationLabel(elapsed)
+    if not elapsed then return "Time unavailable" end
+    local minutes, seconds = math.floor(elapsed / 60), elapsed % 60
+    if minutes >= 60 then return ("%dh %02dm"):format(math.floor(minutes / 60), minutes % 60) end
+    if minutes >= 1 then return ("%dm %02ds"):format(minutes, seconds) end
+    return ("%ds"):format(seconds)
+end
+
+local function BestCatch(session)
+    local bestID, bestCount, bestQuality
+    for id, count in pairs(session.items) do
+        local quality = session.qualities[id]
+        if quality == nil then
+            quality = ReadQuality(id)
+            session.qualities[id] = quality
+            if quality == nil then RequestItem(id) end
+        end
+        if quality and (not bestQuality or quality > bestQuality or (quality == bestQuality
+            and (count > bestCount or (count == bestCount and id < bestID)))) then
+            bestID, bestCount, bestQuality = id, count, quality
+        end
+    end
+    return bestID, bestCount, bestQuality
 end
 
 function L:Build()
     if self.frame then return end
     local T = F.Theme
     local frame = CreateFrame("Frame", "RicoFishingCatchLog", UIParent)
-    self.frame, self.rows, self.requested = frame, {}, {}
-    frame:SetSize(510, 447)
+    self.frame, self.rows = frame, {}
+    frame:SetSize(510, 472)
     frame:SetPoint("CENTER")
     frame:SetFrameStrata("DIALOG")
     frame:SetClampedToScreen(true)
@@ -170,24 +249,46 @@ function L:Build()
     self.details:SetPoint("TOPLEFT", 24, -142)
     self.details:SetWidth(462)
     self.details:SetWordWrap(false)
+    self.best = Text(frame, 10, T.colors.amber)
+    self.best:SetPoint("TOPLEFT", 24, -157)
+    self.best:SetWidth(462)
+    self.best:SetWordWrap(false)
     for index = 1, ROWS do
-        local row = CreateFrame("Frame", nil, frame)
+        local row = CreateFrame("Button", nil, frame)
         row:SetSize(466, 28)
-        row:SetPoint("TOPLEFT", 22, -163 - (index - 1) * 31)
-        T:Panel(row)
+        row:SetPoint("TOPLEFT", 22, -183 - (index - 1) * 31)
+        row:EnableMouse(true)
+        row.background = T:Panel(row)
+        row:SetScript("OnClick", function(self) if self.itemID then L:ToggleFavorite(self.itemID) end end)
+        row:SetScript("OnEnter", function(self)
+            self.hovered = true
+            T:Row(self, L:IsFavorite(self.itemID), true)
+            if GameTooltip then
+                GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+                GameTooltip:SetText(L:IsFavorite(self.itemID) and "Click to remove favorite" or "Click to favorite")
+                GameTooltip:Show()
+            end
+        end)
+        row:SetScript("OnLeave", function(self)
+            self.hovered = false
+            T:Row(self, L:IsFavorite(self.itemID), false)
+            if GameTooltip and GameTooltip:IsOwned(self) then GameTooltip:Hide() end
+        end)
         row.icon = row:CreateTexture(nil, "ARTWORK")
         row.icon:SetSize(19, 19)
         row.icon:SetPoint("LEFT", 6, 0)
         row.name = Text(row, 11)
         row.name:SetPoint("LEFT", 32, 0)
-        row.name:SetWidth(360)
+        row.name:SetWidth(344)
         row.name:SetWordWrap(false)
         row.count = Text(row, 11, T.colors.mint)
-        row.count:SetPoint("RIGHT", -10, 0)
+        row.count:SetPoint("RIGHT", -36, 0)
+        row.star = Text(row, 14, T.colors.amber)
+        row.star:SetPoint("RIGHT", -10, 0)
         self.rows[index] = row
     end
     self.empty = Text(frame, 12, T.colors.muted)
-    self.empty:SetPoint("TOPLEFT", 24, -175)
+    self.empty:SetPoint("TOPLEFT", 24, -192)
     self.empty:SetText("No catches yet. Loot a fish to start the session.")
     self.previousPage = Button(frame, "<", 27, function() L.page = L.page - 1; L:Refresh() end)
     self.previousPage:SetPoint("BOTTOMLEFT", 22, 40)
@@ -198,11 +299,14 @@ function L:Build()
     self.reset = Button(frame, "End session", 112, function() L:Reset(); F:Refresh() end)
     self.reset:SetPoint("BOTTOMRIGHT", -22, 40)
     local help = Text(frame, 9, T.colors.muted)
-    help:SetPoint("BOTTOMLEFT", 24, 17)
-    help:SetText("A new catch after 15 minutes of inactivity starts a new session.")
+    help:SetPoint("BOTTOMLEFT", 24, 20)
+    help:SetText("Click an item to favorite it. A catch after 15 minutes idle starts a new session.")
+    local method = Text(frame, 9, T.colors.muted)
+    method:SetPoint("BOTTOMLEFT", 24, 8)
+    method:SetText("Duration runs from first to last catch. Best uses known rarity, then quantity.")
     frame:RegisterEvent("GET_ITEM_INFO_RECEIVED")
     frame:SetScript("OnEvent", function(_, _, id, success)
-        if F.Number(id) and L.requested[id] and success == true then L:Refresh() end
+        if F.Number(id) and L.requested[id] and not F.IsSecret(success) and success == true then L:Refresh() end
     end)
     frame:Hide()
     if type(UISpecialFrames) == "table" then UISpecialFrames[#UISpecialFrames + 1] = "RicoFishingCatchLog" end
@@ -210,6 +314,7 @@ end
 
 function L:Refresh()
     if not self.frame or not self.frame:IsShown() then return end
+    local T = F.Theme
     local history = self.db.history
     self.view = math.max(0, math.min(self.view, #history))
     local current = self.view == 0
@@ -218,10 +323,21 @@ function L:Refresh()
     self.newer:SetEnabled(not current)
     self.older:SetEnabled(self.view < #history)
     self.reset:SetEnabled(current and session.quantity > 0)
-    self.summary:SetText(("%d %s · %d %s"):format(session.quantity, session.quantity == 1 and "item" or "items",
-        session.loots, session.loots == 1 and "catch" or "catches"))
-    self.details:SetText(session.quantity > 0 and (DateLabel(session.started)
+    local summary = ("%d %s · %d %s"):format(session.quantity, session.quantity == 1 and "item" or "items",
+        session.loots, session.loots == 1 and "catch" or "catches")
+    if session.quantity > 0 then
+        local rate = self:GetRate(session)
+        summary = summary .. " · " .. DurationLabel(Duration(session))
+        if rate then summary = summary .. (" · %.0f items/h"):format(rate) end
+    end
+    self.summary:SetText(summary)
+    self.details:SetText(session.quantity > 0 and ("Started " .. DateLabel(session.started)
         .. (session.zone and " · " .. session.zone or "")) or "")
+    local bestID, bestCount, bestQuality = BestCatch(session)
+    local qualityLabel = bestQuality and _G["ITEM_QUALITY" .. bestQuality .. "_DESC"]
+    local best = bestID and ("Best by rarity · " .. ItemName(bestID) .. " ×" .. bestCount
+        .. (F.PublicString(qualityLabel) and " · " .. qualityLabel or ""))
+    self.best:SetText(best or (session.quantity > 0 and "Best by rarity · Item quality unavailable" or ""))
 
     local items = {}
     for id, count in pairs(session.items) do items[#items + 1] = { id = id, count = count } end
@@ -234,11 +350,16 @@ function L:Refresh()
     self.empty:SetShown(#items == 0)
     for index, row in ipairs(self.rows) do
         local item = items[(self.page - 1) * ROWS + index]
+        row.itemID = item and item.id or nil
         row:SetShown(item ~= nil)
         if item then
+            local favorite = self:IsFavorite(item.id)
             row.icon:SetTexture(F:GetIcon(item.id))
             row.name:SetText(ItemName(item.id))
             row.count:SetText("×" .. item.count)
+            row.star:SetText(favorite and "★" or "☆")
+            row.star:SetTextColor(unpack(favorite and T.colors.amber or T.colors.muted))
+            T:Row(row, favorite, row.hovered)
         end
     end
 end

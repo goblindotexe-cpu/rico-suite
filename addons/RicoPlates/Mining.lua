@@ -47,20 +47,29 @@ function M:Subscribe(callback)
     self.listeners[#self.listeners+1]=callback
     return true
 end
-function M:Refresh()
-    if self.Map and self.Map.Refresh then self.Map:Refresh() end
+function M:Refresh(viewOnly)
+    if self.Map and self.Map.Refresh then self.Map:Refresh(viewOnly) end
     if self.UI and self.UI.Refresh then self.UI:Refresh() end
     for _, callback in ipairs(self.listeners or {}) do pcall(callback,self) end
 end
-function M:QueueRefresh()
+function M:QueueRefresh(viewOnly)
+    if not viewOnly then self.catalogRefreshPending=true end
     if self.refreshPending then return end
     self.refreshPending=true
-    local function refresh() self.refreshPending=nil; self:Refresh() end
+    local function refresh()
+        local refreshViewOnly=not self.catalogRefreshPending
+        self.refreshPending,self.catalogRefreshPending=nil,nil
+        self:Refresh(refreshViewOnly)
+    end
     if C_Timer and C_Timer.After then C_Timer.After(0.1,refresh) else refresh() end
 end
 function M:SetOption(key,value)
     if not self.db or type(self.defaults[key])~="boolean" or type(value)~="boolean" then return false end
-    self.db[key]=value; self:QueueRefresh(); return true
+    if self.db[key]~=value then
+        self.db[key]=value
+        self:QueueRefresh(true)
+    end
+    return true
 end
 
 function M:GetSkill()
@@ -236,9 +245,15 @@ function M:CaptureTooltip(tooltip,data)
         end
     end
     if not miningLine and not self.Data.nodes[name:lower()] then return end
-    if requirement then
-        local count=0; for _ in pairs(self.db.requirements) do count=count+1 end
-        if self.db.requirements[name:lower()] or count<500 then self.db.requirements[name:lower()]=requirement end
+    local key=name:lower()
+    local requirements=self.db.requirements
+    if requirement and requirements[key]~=requirement then
+        local count=0
+        if not requirements[key] then for _ in pairs(requirements) do count=count+1 end end
+        if count<500 then
+            requirements[key]=requirement
+            self:QueueRefresh()
+        end
     end
     self.hover={name=name,requiredSkill=requirement,at=Clock(),position=self:Position()}
 end
@@ -443,7 +458,7 @@ function M:Initialize()
         elseif event=="LOOT_READY" or event=="LOOT_OPENED" then self:SnapshotLoot()
         elseif event=="LOOT_SLOT_CLEARED" then self:ReceiveLoot(...)
         elseif event=="LOOT_CLOSED" then self.pending,self.lootWindow=nil,nil
-        else self:QueueRefresh() end
+        else self:QueueRefresh(true) end
     end)
     local objectKind=Enum and Enum.TooltipDataType and Enum.TooltipDataType.Object
     if TooltipDataProcessor and type(TooltipDataProcessor.AddTooltipPostCall)=="function" and objectKind then
@@ -452,7 +467,7 @@ function M:Initialize()
     if self.Map and self.Map.Initialize then self.Map:Initialize() end
     if self.Routes and self.Routes.Initialize then self.Routes:Initialize() end
     if self.UI and self.UI.Initialize then self.UI:Initialize() end
-    self:QueueRefresh()
+    self:QueueRefresh(true)
 end
 SLASH_RICOMINING1,SLASH_RICOMINING2="/rm","/ricomining"
 SlashCmdList.RICOMINING=function()

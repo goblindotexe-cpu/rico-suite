@@ -287,6 +287,7 @@ function O:Build()
     Checkbox(effects, -299, "bubbles", "Animate liquid and bubbles in the HP bar")
     Slider(effects, -335, "bubbleCount", "Bubbles per bar", 1, 5, 1)
     Slider(effects, -382, "bubbleScale", "Bubble size", 1, 2.6, 0.1, "%.1fx")
+    Slider(effects, -425, "maxAnimatedPlates", "Maximum animated world nameplates", 0, 40, 1)
 
     local auras = self.pages[3]
     local debuffTitle = Text(auras, "DEBUFFS — ABOVE", 11, COLORS.mint)
