@@ -52,12 +52,25 @@ local function Objectives(api, id)
     return result
 end
 
+local function ReadWatches(api)
+    if type(api.GetNumQuestWatches) ~= "function" or type(api.GetQuestIDForQuestWatchIndex) ~= "function" then return end
+    local count = Count(Read(api.GetNumQuestWatches))
+    if not count then return end
+    local watched = {}
+    for index = 1, count do
+        local id = Read(api.GetQuestIDForQuestWatchIndex, index)
+        if ID(id) then watched[id] = true end
+    end
+    return watched
+end
+
 local function ReadLog()
     local api = C_QuestLog or {}
     local entries, seen = {}, {}
     local ok, shown, total = Call(api.GetNumQuestLogEntries)
     if not ok or not Count(shown) then return entries, 0 end
     total = Count(total)
+    local watched, activeCount = ReadWatches(api), 0
     -- Collapsed headers can leave active entries beyond the shown-entry count.
     for index = 1, shown + (total or 0) do
         local got, info = Call(api.GetInfo, index)
@@ -68,15 +81,18 @@ local function ReadLog()
             local id = info.questID
             if ID(id) and not seen[id] and Read(api.IsOnQuest, id) ~= false then
                 seen[id] = true
-                entries[#entries + 1] = {
-                    id = id, order = index,
-                    title = Text(info.title) or Text(Read(api.GetTitleForQuestID, id)) or ("Quest " .. id),
-                    complete = RP.PublicTrue(Read(api.IsComplete, id)), objectives = Objectives(api, id),
-                }
+                activeCount = activeCount + 1
+                if not watched or watched[id] then
+                    entries[#entries + 1] = {
+                        id = id, order = index,
+                        title = Text(info.title) or Text(Read(api.GetTitleForQuestID, id)) or ("Quest " .. id),
+                        complete = RP.PublicTrue(Read(api.IsComplete, id)), objectives = Objectives(api, id),
+                    }
+                end
             end
         end
     end
-    return entries, math.max(total or 0, #entries)
+    return entries, math.max(total or 0, activeCount)
 end
 
 local function WorldPoint(map, x, y)

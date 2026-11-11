@@ -311,6 +311,67 @@ function M:DockNative(frame, level, point, relative, relativePoint, x, y)
     return true
 end
 
+local function RectAtScale(frame, targetScale)
+    if not RP.CanUseFrame(frame) or not frame.GetRect then return end
+    local left, bottom, width, height = frame:GetRect()
+    local scale = frame:GetEffectiveScale()
+    if not left or not bottom or not width or not height or width <= 0 or height <= 0 or not scale or scale <= 0 then return end
+    scale = scale / targetScale
+    return left * scale, (left + width) * scale, (bottom + height) * scale, bottom * scale
+end
+
+function M:RestoreEditBounds()
+    local bounds = self.editBounds
+    if not bounds then return end
+    self.editBounds = nil
+    if bounds.cluster.Selection ~= bounds.selection or not RP.CanUseFrame(bounds.cluster)
+        or not RP.CanUseFrame(bounds.selection) then return end
+    local selection = bounds.selection
+    selection:ClearAllPoints()
+    for _, point in ipairs(bounds.points) do selection:SetPoint(unpack(point, 1, 5)) end
+    bounds.cluster:UpdateClampOffsets()
+end
+
+function M:RefreshEditBounds()
+    if not self.active or RP:IsInCombat() then return end
+    local cluster = MinimapCluster
+    local selection = cluster and cluster.Selection
+    if not RP.CanUseFrame(selection) or not cluster.UpdateClampOffsets or selection:GetNumPoints() == 0 then return end
+    local scale = selection:GetEffectiveScale()
+    if not scale or scale <= 0 then return end
+    local cl, cr, ct, cb = RectAtScale(cluster, scale)
+    local left, right, top, bottom = RectAtScale(self.hud, scale)
+    if not cl or not left then return end
+
+    local launcher = RicoLauncher and RicoLauncher.button
+    if launcher and launcher:GetParent() ~= self.map then launcher = nil end
+    for _, control in pairs({cluster.DielFrame, launcher}) do
+        if RP.CanUseFrame(control) and control:IsShown() then
+            local l, r, t, b = RectAtScale(control, scale)
+            if l then left, right, top, bottom = math.min(left, l), math.max(right, r), math.max(top, t), math.min(bottom, b) end
+        end
+    end
+
+    -- Native magnetism reads the selection's offsets relative to the cluster.
+    -- Keep the cluster's saved position, and use the painted minimap for drag limits.
+    local x1, y1, x2, y2 = left - cl - 2, top - ct + 2, right - cr + 2, bottom - cb - 2
+    local a, ar, ap, ax, ay = selection:GetPoint(1)
+    local b, br, bp, bx, by = selection:GetPoint(2)
+    if a == "TOPLEFT" and ar == cluster and ap == a and ax == x1 and ay == y1
+        and b == "BOTTOMRIGHT" and br == cluster and bp == b and bx == x2 and by == y2
+        and selection:GetNumPoints() == 2 then return end
+    if not self.editBounds or self.editBounds.selection ~= selection then
+        self:RestoreEditBounds()
+        local points = {}
+        for i = 1, selection:GetNumPoints() do points[i] = {selection:GetPoint(i)} end
+        self.editBounds = {cluster = cluster, selection = selection, points = points}
+    end
+    selection:ClearAllPoints()
+    selection:SetPoint("TOPLEFT", cluster, "TOPLEFT", x1, y1)
+    selection:SetPoint("BOTTOMRIGHT", cluster, "BOTTOMRIGHT", x2, y2)
+    cluster:UpdateClampOffsets()
+end
+
 function M:PlaceNativeControls()
     if not self.active or RP:IsInCombat() then return end
     local cluster, map = MinimapCluster, self.map
@@ -318,6 +379,11 @@ function M:PlaceNativeControls()
         for _, method in ipairs({"SetEditModeScale", "SetHeaderUnderneath"}) do
             if type(cluster[method]) == "function" then
                 hooksecurefunc(cluster, method, function() M:PlaceNativeControls() end)
+            end
+        end
+        for _, method in ipairs({"AnchorSelectionFrame", "Layout"}) do
+            if type(cluster[method]) == "function" then
+                hooksecurefunc(cluster, method, function() M:RefreshEditBounds() end)
             end
         end
         self.layoutHook = cluster
@@ -335,6 +401,7 @@ function M:PlaceNativeControls()
     local calendar = GameTimeFrame
     local hasCalendar = self:DockNative(calendar, level, "TOPRIGHT", map, "TOPRIGHT", -8, -8)
     if hasCalendar then self:DockNative(AddonCompartmentFrame, level, "RIGHT", calendar, "LEFT", -4, 0) end
+    self:RefreshEditBounds()
 end
 
 function M:RestoreNativeControls()
@@ -435,6 +502,7 @@ function M:Disable()
     self.hud:Hide()
     self.hud:SetScript("OnUpdate", nil)
     self:RestoreNativeControls()
+    self:RestoreEditBounds()
     if map:GetScript("OnMouseWheel") == self.wheel then
         map:SetScript("OnMouseWheel", self.previousWheel)
         map:EnableMouseWheel(self.previousWheelEnabled)
