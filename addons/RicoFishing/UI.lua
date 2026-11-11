@@ -155,10 +155,10 @@ end
 
 function U:BuildFishingKeyControls(panel)
     local label = Text(panel, 12, COLORS.mint)
-    label:SetPoint("TOPLEFT", 26, -216)
+    label:SetPoint("TOPLEFT", 26, -245)
     label:SetText("Fishing key")
     self.keyButton = Button(panel, "", 170, 27, function() U:StartKeyCapture() end)
-    self.keyButton:SetPoint("TOPLEFT", 24, -235)
+    self.keyButton:SetPoint("TOPLEFT", 24, -264)
     self.keyButton.label:SetWidth(162)
     self.keyButton.label:SetJustifyH("CENTER")
     self.keyButton.label:SetWordWrap(false)
@@ -167,7 +167,7 @@ function U:BuildFishingKeyControls(panel)
     local reset = Button(panel, "Reset to F", 84, 27, function() U:SaveFishingKey(F.defaults.fishingKey) end)
     reset:SetPoint("LEFT", clear, "RIGHT", 8, 0)
     self.keyHint = Text(panel, 10, COLORS.muted)
-    self.keyHint:SetPoint("TOPLEFT", 26, -276)
+    self.keyHint:SetPoint("TOPLEFT", 26, -305)
     self.keyHint:SetWidth(356)
     self.keyHint:SetWordWrap(true)
 
@@ -236,7 +236,7 @@ function U:ToggleTools()
     if not self.tools then
         local panel = CreateFrame("Frame", "RicoFishingTools", UIParent)
         self.tools = panel
-        panel:SetSize(382, F.OneKey and 312 or 251)
+        panel:SetSize(382, F.OneKey and 342 or 251)
         panel:SetPoint("CENTER")
         panel:SetFrameStrata("DIALOG")
         panel:SetToplevel(true)
@@ -251,9 +251,10 @@ function U:ToggleTools()
         close:SetPoint("TOPRIGHT", -20, -29)
         self.toolChecks = {
             Check(panel, "Show the lure countdown", "lureTimer", 22, -88),
-            Check(panel, "Warn when general bags are nearly full", "bagWarning", 22, -117),
+            Check(panel, "Warn in chat when bags are nearly full", "bagWarning", 22, -117),
             Check(panel, "Tell me when I loot a favorite catch", "favoriteAlerts", 22, -146),
             Check(panel, "Show fishing key prompt beside your character", "fishingPrompt", 22, -175),
+            Check(panel, "Show the last 10 catches while holding a pole", "recentCatches", 22, -204),
         }
         if F.OneKey then self:BuildFishingKeyControls(panel) end
         panel:Hide()

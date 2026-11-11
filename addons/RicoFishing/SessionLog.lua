@@ -2,8 +2,9 @@ local _, F = ...
 local L = { view = 0, page = 1, requested = {} }
 F.SessionLog = L
 
-local HISTORY_LIMIT, IDLE_SECONDS, ROWS = 25, 15 * 60, 7
+local HISTORY_LIMIT, RECENT_LIMIT, IDLE_SECONDS, ROWS = 25, 10, 15 * 60, 7
 local unpack = unpack or table.unpack
+local emptyRecent = {}
 local ItemName
 
 local function ItemID(id)
@@ -65,6 +66,7 @@ function L:Initialize()
     local old = type(RicoFishingLogDB) == "table" and RicoFishingLogDB or {}
     local history = {}
     local favorites = {}
+    local recentCatches = {}
     if type(old.history) == "table" then
         for index = 1, HISTORY_LIMIT do
             local session = Clean(old.history[index])
@@ -76,9 +78,22 @@ function L:Initialize()
             if ItemID(id) and selected == true then favorites[id] = true end
         end
     end
+    if type(old.recentCatches) == "table" then
+        for index = 1, RECENT_LIMIT do
+            local row = old.recentCatches[index]
+            if type(row) == "table" and ItemID(row.id) and F.Number(row.count) and row.count >= 1 then
+                local link = F.PublicString(row.link) and tonumber(row.link:match("item:(%d+)")) == row.id and row.link or nil
+                recentCatches[#recentCatches + 1] = { id = row.id, count = math.floor(row.count), link = link }
+            end
+        end
+    end
     self.db = { history = history, current = Clean(old.current) or Empty(), favorites = favorites,
-        spots = type(old.spots) == "table" and old.spots or {} }
+        recentCatches = recentCatches, spots = type(old.spots) == "table" and old.spots or {} }
     RicoFishingLogDB, F.session = self.db, self.db.current
+end
+
+function L:GetRecentCatches()
+    return self.db and self.db.recentCatches or emptyRecent
 end
 
 function L:IsFavorite(id)
@@ -113,7 +128,20 @@ function L:Reset()
     return archived
 end
 
-function L:Record(id, quantity, firstInWindow)
+local function RecordRecent(recent, window, id, quantity, link)
+    window.recentByItem = window.recentByItem or {}
+    local row = window.recentByItem[id]
+    if row then
+        row.count = row.count + quantity
+        return
+    end
+    row = { id = id, count = quantity, link = link }
+    window.recentByItem[id] = row
+    table.insert(recent, 1, row)
+    recent[RECENT_LIMIT + 1] = nil
+end
+
+function L:Record(id, quantity, firstInWindow, window, link)
     local now = Timestamp()
     local current = self.db.current
     local archived
@@ -134,6 +162,7 @@ function L:Record(id, quantity, firstInWindow)
         current.loots = current.loots + 1
         self.favoriteAlerted = nil
     end
+    if window then RecordRecent(self.db.recentCatches, window, id, quantity, link) end
     if self:IsFavorite(id) and not self.favoriteAlerted and F.db.favoriteAlerts ~= false then
         self.favoriteAlerted = true
         F:Print("Favorite caught · " .. ItemName(id) .. " ×" .. quantity)

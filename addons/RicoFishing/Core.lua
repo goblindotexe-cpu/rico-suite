@@ -1,9 +1,9 @@
 local addonName, F = ...
 _G.RicoFishing = F
-F.name, F.version = addonName, "1.7.4"
+F.name, F.version = addonName, "1.8.0"
 F.session = { items = {}, quantity = 0, loots = 0 }
 F.defaults = { selected = 6291, goal = 20, pins = true, reportedPins = false, hud = true, oneKey = true, fishingKey = "F",
-    lureTimer = true, bagWarning = true, favoriteAlerts = true, fishingPrompt = true, hudX = 0, hudY = 165 }
+    lureTimer = true, bagWarning = true, favoriteAlerts = true, fishingPrompt = true, recentCatches = true, hudX = 0, hudY = 165 }
 
 function F.IsSecret(value) return issecretvalue and issecretvalue(value) or false end
 function F.Number(value)
@@ -60,6 +60,7 @@ function F:Refresh()
         self.lureTimerSetting, self.bagWarningSetting = self.db.lureTimer, self.db.bagWarning
         self.Warnings:RefreshOptions()
     end
+    if self.warningsReady and self.Warnings.RefreshRecentCatches then self.Warnings:RefreshRecentCatches() end
     if self.UI then self.UI:Refresh() end
     if self.spotsReady then self.SpotStats:Refresh() end
 end
@@ -135,8 +136,8 @@ function F:SnapshotFishingLoot()
             if gotLink and self.PublicString(link) then
                 local id = tonumber(link:match("item:(%d+)"))
                 local gotInfo, _, _, quantity = self.Call(GetLootSlotInfo, slot)
-                if self.Number(id) and id > 0 and gotInfo and self.Number(quantity) and quantity > 0 then
-                    window.slots[slot] = { id = id, quantity = math.floor(quantity) }
+                if self.Number(id) and id > 0 and gotInfo and self.Number(quantity) and quantity >= 1 then
+                    window.slots[slot] = { id = id, quantity = math.floor(quantity), link = link }
                 end
             end
         end
@@ -153,7 +154,7 @@ function F:ReceiveLootSlot(slot)
     local firstInWindow = not window.credited
     window.credited = true
     if self.SessionLog then
-        self.SessionLog:Record(data.id, data.quantity, firstInWindow)
+        self.SessionLog:Record(data.id, data.quantity, firstInWindow, window, data.link)
     else
         local session = self.session
         if not session.started then session.started = GetTime and GetTime() or 0 end

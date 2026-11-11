@@ -66,7 +66,6 @@ local function GeneralBagSlots()
 end
 
 function W:UpdateBags()
-    self.bagText = nil
     if not F.db.bagWarning then return end
     local free = GeneralBagSlots()
     if free == nil then return end
@@ -74,11 +73,10 @@ function W:UpdateBags()
         self.bagNotice = nil
     elseif self.pole then
         local severity = free == 0 and 2 or 1
-        local message = free == 0 and "Bags full" or ("Bag space low: %d free"):format(free)
-        self.bagText = (severity == 2 and RED or AMBER) .. message .. "|r"
         if severity > (self.bagNotice or 0) then
             self.bagNotice = severity
-            F:Print(self.bagText)
+            local message = free == 0 and "Bags full" or ("Bag space low: %d free"):format(free)
+            F:Print((severity == 2 and RED or AMBER) .. message .. "|r")
         end
     end
 end
@@ -185,20 +183,19 @@ function W:RefreshPrompt()
     end
     if prompt then prompt:SetShown(mode ~= nil) end
 
-    local lureText = not mode and self.baitText
+    local lureText = not mode and self.baitText or nil
     if lureText and (self.baitState == "low" or self.baitState == "missing") then
         lureText = AMBER .. lureText .. "|r"
     end
-    local bagText = self.pole and self.bagText
-    local label = lureText and bagText and (lureText .. "  •  " .. bagText) or lureText or bagText
-    if self.hud then
-        if label ~= self.label then self.hud.text:SetText(label or "") end
-        self.label = label
-        self.hud:SetShown(label ~= nil)
+    local lureHud = self.lureHud
+    if lureHud then
+        if lureText ~= self.label then lureHud.text:SetText(lureText or "") end
+        self.label = lureText
+        lureHud:SetShown(lureText ~= nil)
     end
 
-    -- One visible frame owns the countdown, even if a bag warning is also up.
-    local visible = mode and prompt or label and self.hud
+    -- The catch strip has no countdown and never owns an OnUpdate handler.
+    local visible = mode and prompt or lureText and lureHud
     local driver = self.pole and F.db.lureTimer and visible or nil
     if driver ~= self.driver then
         if self.driver then self.driver:SetScript("OnUpdate", nil) end
@@ -208,10 +205,11 @@ function W:RefreshPrompt()
 end
 
 function W:RefreshOptions()
-    if not self.hud then return end
+    if not self.lureHud then return end
     self.pole = EquippedPole()
     self:UpdateBags()
     self:UpdateLure()
+    self:RefreshRecentCatches()
     self:RefreshPrompt()
 end
 
@@ -273,6 +271,31 @@ local function PromptText(parent, size, color)
     return text
 end
 
+local function AddSmoke(parent, anchor, file, width, height, x, y, opacity)
+    local path = "Interface\\AddOns\\" .. F.name .. "\\Media\\" .. file
+    local smoke = parent:CreateTexture(nil, "BACKGROUND", nil, -2)
+    smoke:SetTexture(path)
+    smoke:SetPoint("CENTER", anchor, "CENTER", x, y)
+    smoke:SetSize(width, height)
+    smoke:SetVertexColor(0.54, 0.70, 0.62, opacity)
+    local glow = parent:CreateTexture(nil, "BACKGROUND", nil, -1)
+    glow:SetTexture(path)
+    glow:SetAllPoints(smoke)
+    glow:SetBlendMode("ADD")
+    glow:SetVertexColor(0.31, 1, 0.62)
+    return glow
+end
+
+local function PulseAlpha(group, target, low, high, duration)
+    local alpha = group:CreateAnimation("Alpha")
+    alpha:SetTarget(target)
+    alpha:SetOrder(1)
+    alpha:SetFromAlpha(low)
+    alpha:SetToAlpha(high)
+    alpha:SetDuration(duration)
+    alpha:SetSmoothing("IN_OUT")
+end
+
 function W:CreatePrompt()
     if self.prompt then return end
     local prompt = CreateFrame("Frame", nil, UIParent)
@@ -297,17 +320,7 @@ function W:CreatePrompt()
     key:SetSize(51, 52)
     key:EnableMouse(false)
 
-    local smokePath = "Interface\\AddOns\\" .. F.name .. "\\Media\\PromptSmoke.tga"
-    local smoke = prompt:CreateTexture(nil, "BACKGROUND", nil, -2)
-    smoke:SetTexture(smokePath)
-    smoke:SetPoint("CENTER", key, "CENTER", 4, 0)
-    smoke:SetSize(156, 156)
-    smoke:SetVertexColor(0.54, 0.70, 0.62, 0.40)
-    local smokeGlow = prompt:CreateTexture(nil, "BACKGROUND", nil, -1)
-    smokeGlow:SetTexture(smokePath)
-    smokeGlow:SetAllPoints(smoke)
-    smokeGlow:SetBlendMode("ADD")
-    smokeGlow:SetVertexColor(0.31, 1, 0.62)
+    local smokeGlow = AddSmoke(prompt, key, "PromptSmoke.tga", 156, 156, 4, 0, 0.40)
 
     Metal(key, 1, 2, 49, 48, 9)
     CutOutline(key, 5, 6, 41, 40, 6, 1, {
@@ -337,20 +350,8 @@ function W:CreatePrompt()
     end
     local pulse = prompt:CreateAnimationGroup()
     pulse:SetLooping("BOUNCE")
-    local alpha = pulse:CreateAnimation("Alpha")
-    alpha:SetTarget(aura)
-    alpha:SetOrder(1)
-    alpha:SetFromAlpha(0.46)
-    alpha:SetToAlpha(1)
-    alpha:SetDuration(1.45)
-    alpha:SetSmoothing("IN_OUT")
-    local glowAlpha = pulse:CreateAnimation("Alpha")
-    glowAlpha:SetTarget(smokeGlow)
-    glowAlpha:SetOrder(1)
-    glowAlpha:SetFromAlpha(0.18)
-    glowAlpha:SetToAlpha(0.65)
-    glowAlpha:SetDuration(1.45)
-    glowAlpha:SetSmoothing("IN_OUT")
+    PulseAlpha(pulse, aura, 0.46, 1, 1.45)
+    PulseAlpha(pulse, smokeGlow, 0.18, 0.65, 1.45)
     prompt:SetScript("OnShow", function() pulse:Play() end)
     prompt:SetScript("OnHide", function() pulse:Stop() end)
     for _, event in ipairs({ "PLAYER_MOUNT_DISPLAY_CHANGED", "PLAYER_DEAD", "PLAYER_ALIVE", "PLAYER_UNGHOST" }) do
@@ -360,14 +361,149 @@ function W:CreatePrompt()
     self:RefreshPrompt()
 end
 
-function W:Initialize()
-    if self.hud then return end
-    local theme = F.Theme
+local RECENT_SLOTS = 10
+
+local function HideCatchTooltip(slot)
+    if GameTooltip and GameTooltip:IsOwned(slot) then GameTooltip:Hide() end
+end
+
+local function ShowCatchTooltip(slot)
+    local tooltip = GameTooltip
+    if not tooltip or not slot.itemID then return end
+    tooltip:SetOwner(slot, "ANCHOR_TOP")
+    local shown = slot.itemLink and F.Call(tooltip.SetHyperlink, tooltip, slot.itemLink)
+    if not shown then
+        local ok = F.Call(tooltip.SetItemByID, tooltip, slot.itemID)
+        if not ok then F.Call(tooltip.SetHyperlink, tooltip, "item:" .. slot.itemID) end
+    end
+    tooltip:Show()
+end
+
+local function CatchName(hud, catch)
+    if not catch then return "No catches yet" end
+    local getter = C_Item and C_Item.GetItemNameByID or GetItemInfo
+    local ok, name = F.Call(getter, catch.id)
+    if not ok or not F.PublicString(name) or name == "" then
+        local entry = F:GetEntry(catch.id)
+        name = catch.link and catch.link:match("%[([^%]]+)%]") or entry and entry.name
+    end
+    if not name then
+        if hud.requestedID ~= catch.id then
+            hud.requestedID = catch.id
+            F.Call(C_Item and C_Item.RequestLoadItemDataByID, catch.id)
+        end
+        name = "Item #" .. catch.id
+    end
+    return catch.count > 1 and (name .. " ×" .. catch.count) or name
+end
+
+function W:RefreshRecentCatches()
+    local hud = self.hud
+    if not hud then return end
+    local shown = self.pole ~= nil and F.db.recentCatches == true
+    hud:SetShown(shown)
+    local anchor = shown and hud or F.UI.hud
+    if self.lureAnchor ~= anchor then
+        self.lureAnchor = anchor
+        self.lureHud:ClearAllPoints()
+        self.lureHud:SetPoint("BOTTOM", anchor, "TOP", 0, 4)
+    end
+    if not shown then return end
+
+    local catches = F.SessionLog and F.SessionLog:GetRecentCatches()
+    local name = CatchName(hud, catches and catches[1])
+    if hud.catchName ~= name then
+        hud.catchName = name
+        hud.name:SetText(name)
+    end
+    for index, slot in ipairs(hud.slots) do
+        local catch = catches and catches[index]
+        local id, link = catch and catch.id, catch and catch.link
+        local changed = slot.itemID ~= id or slot.itemLink ~= link
+        if (slot.itemID ~= nil) ~= (id ~= nil) then
+            slot.icon:SetShown(id ~= nil)
+            slot:EnableMouse(id ~= nil)
+        end
+        slot.itemID, slot.itemLink = id, link
+        if catch then
+            local texture = F:GetIcon(id)
+            if slot.texture ~= texture then
+                slot.texture = texture
+                slot.icon:SetTexture(texture)
+            end
+        end
+        local count = catch and catch.count
+        if slot.quantity ~= count then
+            slot.quantity = count
+            slot.count:SetText(count and count > 1 and tostring(count) or "")
+        end
+        if changed and GameTooltip and GameTooltip:IsOwned(slot) then
+            if id then ShowCatchTooltip(slot) else HideCatchTooltip(slot) end
+        end
+    end
+end
+
+function W:CreateRecentCatches()
     local hud = CreateFrame("Frame", nil, UIParent)
     self.hud = hud
+    hud:Hide()
+    hud:SetSize(328, 57)
+    hud:SetPoint("BOTTOM", F.UI.hud, "TOP", 0, 4)
+    hud:SetFrameStrata("MEDIUM")
+    hud:SetClampedToScreen(true)
+    Metal(hud, 2, 2, 324, 53, 7)
+    local glow = AddSmoke(hud, hud, "CatchStripSmoke.tga", 520, 140, 0, 0, 0.36)
+
+    local heading = PromptText(hud, 11, MINT)
+    heading:SetPoint("TOPLEFT", 16, -9)
+    heading:SetText("Latest catch")
+    hud.name = PromptText(hud, 12, { 0.93, 0.98, 0.95 })
+    hud.name:SetPoint("LEFT", heading, "RIGHT", 10, 0)
+    hud.name:SetWidth(222)
+    hud.name:SetJustifyH("LEFT")
+    hud.name:SetWordWrap(false)
+
+    hud.slots = {}
+    for index = 1, RECENT_SLOTS do
+        local slot = CreateFrame("Frame", nil, hud)
+        hud.slots[index] = slot
+        slot:SetSize(25, 25)
+        slot:SetPoint("BOTTOMLEFT", 16 + (index - 1) * 30, 8)
+        slot:EnableMouse(false)
+        local edge = index == 1 and { 0.23, 0.66, 0.47 } or { 0.16, 0.24, 0.20 }
+        Rect(slot, "BACKGROUND", 0, 0, 25, 25, edge[1], edge[2], edge[3], 1)
+        Rect(slot, "BORDER", 1, 1, 23, 23, 0.027, 0.045, 0.036, 1)
+        slot.icon = slot:CreateTexture(nil, "ARTWORK")
+        slot.icon:SetPoint("CENTER")
+        slot.icon:SetSize(21, 21)
+        slot.icon:SetTexCoord(0.07, 0.93, 0.07, 0.93)
+        slot.icon:Hide()
+        slot.count = PromptText(slot, 10, { 0.96, 1, 0.97 })
+        slot.count:SetPoint("BOTTOMRIGHT", -2, 1)
+        slot:SetScript("OnEnter", ShowCatchTooltip)
+        slot:SetScript("OnLeave", HideCatchTooltip)
+        slot:SetScript("OnHide", HideCatchTooltip)
+    end
+
+    local pulse = hud:CreateAnimationGroup()
+    pulse:SetLooping("BOUNCE")
+    PulseAlpha(pulse, glow, 0.20, 0.60, 1.65)
+    hud:SetScript("OnShow", function() pulse:Play() end)
+    hud:SetScript("OnHide", function()
+        pulse:Stop()
+        for _, slot in ipairs(hud.slots) do HideCatchTooltip(slot) end
+    end)
+end
+
+function W:Initialize()
+    if self.lureHud then return end
+    self:CreateRecentCatches()
+    local theme = F.Theme
+    local hud = CreateFrame("Frame", nil, UIParent)
+    self.lureHud = hud
+    hud:Hide()
     hud:SetSize(292, 24)
     hud:SetFrameStrata("MEDIUM")
-    hud:SetPoint("BOTTOM", F.UI.hud, "TOP", 0, 4)
     hud:SetClampedToScreen(true)
     theme:Panel(hud)
     hud.text = hud:CreateFontString(nil, "OVERLAY")
@@ -379,8 +515,9 @@ function W:Initialize()
     hud:RegisterEvent("PLAYER_EQUIPMENT_CHANGED")
     hud:RegisterEvent("BAG_UPDATE_DELAYED")
     hud:SetScript("OnEvent", function(_, event, slot)
+        if event == "BAG_UPDATE_DELAYED" then self:UpdateBags(); return end
         if event == "PLAYER_EQUIPMENT_CHANGED" and slot ~= MAIN_HAND then return end
-        if event ~= "BAG_UPDATE_DELAYED" then self.lureSeconds = nil end
+        self.lureSeconds = nil
         self:RefreshOptions()
     end)
     self:RefreshOptions()

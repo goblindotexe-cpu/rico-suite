@@ -14,7 +14,10 @@ ROOT = Path(__file__).resolve().parent
 ADDONS = ("RicoFishing", "RicoLoot", "RicoPlates")
 OUTPUT = ROOT / "dist" / "RicoSuite-forever.zip"
 REQUIRED_FILES = {
-    "RicoFishing": ("LICENSE.txt", "LICENSE_GatherLite.txt", "LICENSE-RICO-SHARED.txt", "SOURCES_NL.txt", "Media/PromptSmoke.tga"),
+    "RicoFishing": (
+        "LICENSE.txt", "LICENSE_GatherLite.txt", "LICENSE-RICO-SHARED.txt", "SOURCES_NL.txt",
+        "Media/PromptSmoke.tga", "Media/CatchStripSmoke.tga",
+    ),
     "RicoLoot": (
         "COPYING.txt", "SOURCES_NL.txt", "Licenses/GPL-3.0.txt", "Licenses/RicoShared-MIT.txt",
         "Licenses/Lootified-THIRD_PARTY_NOTICES.md", "Source/build_ricoloot_data.py",
