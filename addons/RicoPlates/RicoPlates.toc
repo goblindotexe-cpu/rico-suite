@@ -3,7 +3,7 @@
 ## Title: |cff59e4bfRico|rPlates
 ## Notes: Modern nameplates and player/target/pet unit frames with animated 3D portraits, liquid health and quest indicators.
 ## Author: Rico
-## Version: 1.31.2
+## Version: 1.31.3
 ## SavedVariables: RicoPlatesDB, RicoSuiteDB, RicoPlatesNavigationDB, RicoMiningDB
 ## SavedVariablesPerCharacter: RicoPlatesNavigationCharDB, RicoPlatesPickPocketDB
 ## OptionalDeps: Questie, QuestieDB, RicoLoot, ShortestPathForever, Bagnon

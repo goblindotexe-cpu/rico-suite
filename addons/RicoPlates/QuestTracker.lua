@@ -42,7 +42,8 @@ local function ShowTooltip(row)
     if not quest or not tooltip then return end
     tooltip:SetOwner(row, "ANCHOR_LEFT")
     tooltip:ClearLines()
-    tooltip:SetText(quest.title)
+    local titleColor = quest.titleColor or T.colors.text
+    tooltip:SetText(quest.displayTitle or quest.title, unpack(titleColor))
     if quest.dungeon then tooltip:AddLine("Dungeon quest", 0.94, 0.75, 0.43) end
     if quest.complete then tooltip:AddLine("Ready to turn in", 0.42, 0.92, 0.68) end
     for _, objective in ipairs(quest.objectives or {}) do
@@ -318,7 +319,12 @@ function Q:RenderRows()
             local distance = DistanceLabel(quest.distance)
             local detail = ObjectiveSummary(quest)
             local tooltipChanged = previous ~= quest or row.distance.ricoValue ~= distance
-            SetText(row.title, quest.title)
+            SetText(row.title, quest.displayTitle or quest.title)
+            local titleColor = quest.titleColor or T.colors.text
+            if row.titleColor ~= titleColor then
+                row.titleColor = titleColor
+                row.title:SetTextColor(unpack(titleColor))
+            end
             SetText(row.distance, distance)
             SetText(row.detail, detail)
             if row.complete ~= quest.complete then
@@ -469,12 +475,19 @@ function Q:Initialize()
     local events = CreateFrame("Frame")
     self.events = events
     for _, event in ipairs({
-        "PLAYER_ENTERING_WORLD", "PLAYER_REGEN_ENABLED", "ADDON_LOADED",
+        "PLAYER_ENTERING_WORLD", "PLAYER_REGEN_ENABLED", "PLAYER_LEVEL_UP", "ADDON_LOADED",
         "QUEST_LOG_UPDATE", "QUEST_WATCH_LIST_CHANGED", "QUEST_ACCEPTED", "QUEST_REMOVED", "QUEST_TURNED_IN",
         "QUEST_POI_UPDATE", "ZONE_CHANGED", "ZONE_CHANGED_NEW_AREA",
     }) do pcall(events.RegisterEvent, events, event) end
     events:SetScript("OnEvent", function(_, event, addon)
         if event == "ADDON_LOADED" and addon ~= "Blizzard_ObjectiveTracker" and addon ~= "Questie" and addon ~= "QuestieDB" then return end
+        if event == "PLAYER_LEVEL_UP" and C_Timer and C_Timer.After then
+            C_Timer.After(0, function()
+                RP.QuestTrackerData:Invalidate()
+                Q:Refresh()
+            end)
+            return
+        end
         RP.QuestTrackerData:Invalidate()
         if event == "PLAYER_ENTERING_WORLD" or event == "ADDON_LOADED" then
             if C_Timer and C_Timer.After then C_Timer.After(0, function() Q:UpdateSettings() end)

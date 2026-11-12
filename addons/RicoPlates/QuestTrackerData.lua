@@ -35,6 +35,26 @@ local function Text(value)
     if RP.Readable(value) and type(value) == "string" and value ~= "" then return value end
 end
 
+local function QuestLevel(api, id, info)
+    local level = Read(api.GetQuestDifficultyLevel, id)
+    if ID(level) then return level end
+    if ID(info.difficultyLevel) then return info.difficultyLevel end
+    if ID(info.level) then return info.level end
+end
+
+local function RGB(color)
+    if Table(color) and Number(color.r) and Number(color.g) and Number(color.b) then
+        return {color.r, color.g, color.b}
+    end
+end
+
+local function QuestColor(id, level)
+    if not level then return end
+    local difficulty = Read(C_PlayerInfo and C_PlayerInfo.GetContentDifficultyQuestForPlayer, id)
+    local color = Number(difficulty) and RGB(Read(GetDifficultyColor, difficulty))
+    return color or RGB(Read(GetQuestDifficultyColor, level))
+end
+
 local function IsDungeonQuest(api, id, title)
     local dungeonLabel = Text(CALENDAR_TYPE_DUNGEON) or "Dungeon"
     local tag = Read(api.GetQuestTagInfo, id)
@@ -110,8 +130,11 @@ local function ReadLog()
                 activeCount = activeCount + 1
                 if not watched or watched[id] then
                     local title = Text(info.title) or Text(Read(api.GetTitleForQuestID, id)) or ("Quest " .. id)
+                    local level = QuestLevel(api, id, info)
                     entries[#entries + 1] = {
                         id = id, order = index, title = title, dungeon = IsDungeonQuest(api, id, title),
+                        displayTitle = level and ("[%d] %s"):format(level, title) or title,
+                        titleColor = QuestColor(id, level),
                         complete = RP.PublicTrue(Read(api.IsComplete, id)), objectives = Objectives(api, id),
                     }
                 end

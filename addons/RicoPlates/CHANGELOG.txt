@@ -1,3 +1,8 @@
+RicoPlates 1.31.3 — 2026-11-12
+
+- All Objectives zet het questlevel tussen vierkante haken voor de titel en
+  gebruikt de moeilijkheidskleur van WoW. De kleur wordt bijgewerkt bij level-up.
+
 RicoPlates 1.5.0 — 2026-11-06
 
 - Kleine kistknop rechts van de HP-balk op NPC-nameplates. De optionele questtekst
